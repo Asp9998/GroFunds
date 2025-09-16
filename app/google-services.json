@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "29226190501",
+    "project_id": "grofunds-584ea",
+    "storage_bucket": "grofunds-584ea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:29226190501:android:b1de6f873ea9f5ff786f4c",
+        "android_client_info": {
+          "package_name": "com.aryanspatel.grofunds"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhjtREskIznYtAqGOnKNUH4l1d2S9U0ao"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
