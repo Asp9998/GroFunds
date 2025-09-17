@@ -60,11 +60,11 @@ jobs:
       - name: Build & Test
         run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
 
-#      - name: Android Lint
-#        run: ./gradlew --no-daemon lintDebug
-#
-#      - name: Upload debug APK
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: app-debug-apk
-#          path: app/build/outputs/apk/debug/*.apk
+      - name: Android Lint
+        run: ./gradlew --no-daemon lintDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
