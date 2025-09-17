@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/src/main/java/com/aryanspatel/grofunds/API.kt
+backend/functions/.runtimeconfig.json
