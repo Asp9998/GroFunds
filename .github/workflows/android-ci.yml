@@ -47,11 +47,11 @@ jobs:
 
       # If you keep google-services.json as a GitHub secret, write it out here.
       # In repo Settings → Secrets → Actions → add GOOGLE_SERVICES_JSON (the full JSON string).
-      - name: Create google-services.json (optional)
-        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
-        run: |
-          mkdir -p app
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+#      - name: Create google-services.json (optional)
+#        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+#        run: |
+#          mkdir -p app
+#          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
       - name: Make gradlew executable
         run: chmod +x gradlew
