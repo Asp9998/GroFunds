@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.ui.graphics)
     implementation(libs.androidx.tv.material)
+    implementation(libs.androidx.foundation.layout)
 
     //
     androidTestImplementation(libs.androidx.ui.test.junit4)

@@ -4,7 +4,7 @@ import com.aryanspatel.grofunds.common.DefaultDispatcherProvider
 import com.aryanspatel.grofunds.common.DispatcherProvider
 import com.aryanspatel.grofunds.data.repository.AuthRepository
 import com.aryanspatel.grofunds.data.repository.UserRepository
-import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
+import com.aryanspatel.grofunds.data.repository.AddEntryRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings

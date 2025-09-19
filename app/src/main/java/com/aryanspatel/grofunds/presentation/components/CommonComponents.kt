@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -18,13 +17,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -35,13 +35,21 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,18 +59,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.aryanspatel.grofunds.data.model.AuthState
 import kotlinx.coroutines.delay
+import java.util.Calendar
 
 /**
- * A reusable overlay card with slide + fade animation.
- * Used by both Login and SignUp screens.
+ * A reusable overlay Screen with slide + fade animation.
  */
 @Composable
 fun HorizontalSlidingOverlay(
@@ -144,7 +153,7 @@ fun HorizontalSlidingOverlay(
 }
 
 /**
- * Common header for auth overlays (back button + title)
+ * Header for overlay Screen
  */
 @Composable
 fun HorizontalSlidingOverlayHeader(
@@ -176,49 +185,7 @@ fun HorizontalSlidingOverlayHeader(
 }
 
 /**
- * Reusable text field for auth forms
- */
-@Composable
-fun AuthTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    isPassword: Boolean = false
-) {
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(text = label, fontWeight = FontWeight.Bold) },
-        modifier = modifier.fillMaxWidth().padding(bottom = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF667eea),
-            focusedLabelColor = Color(0xFF667eea),
-            cursorColor = Color(0xFF667eea)
-        ),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        singleLine = true,
-        visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
-        trailingIcon = if (isPassword) {
-            {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        } else null
-    )
-}
-
-/**
- * Reusable submit button for Sign Up / Login
+ * Reusable Outline and Regular button in one
  */
 @Composable
 fun Button(
@@ -227,9 +194,10 @@ fun Button(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isOutlined: Boolean = false,
-    cornerRadius: Dp = 12.dp,
+    cornerRadius: Dp = 16.dp,
     backgroundColor: Color = MaterialTheme.colorScheme.primary,
-    contentColor: Color = Color.White
+    contentColor: Color = Color.White,
+    elevation: Dp = 0.dp
 ) {
     if (isOutlined) {
         OutlinedButton(
@@ -241,7 +209,7 @@ fun Button(
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = backgroundColor
             ),
-            border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+            border =  ButtonDefaults.outlinedButtonBorder(enabled).copy(1.dp),
             shape = RoundedCornerShape(cornerRadius)
         ) {
             Text(
@@ -262,15 +230,84 @@ fun Button(
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
                 contentColor = contentColor
-            )
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = elevation)
         ) {
             Text(
                 text = text,
-                fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         }
     }
+}
+
+/**
+ *  Reusable OutlineTextField
+ */
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModernTextField(
+    modifier: Modifier = Modifier,
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String = "",
+    placeholder: String = "",
+    leadingIcon: ImageVector? = null,
+    suffix: String = "",
+    minLines: Int = 1,
+    maxLines: Int = 1,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Done,
+    keyboardActions: KeyboardActions = KeyboardActions {},
+    cornerRadius: Dp = 16.dp,
+    focusedBorderColor: Color = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+    focusedLabelColor: Color = MaterialTheme.colorScheme.primary,
+    isPassword: Boolean = false
+) {
+
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = if (label.isNotEmpty()) ({ Text(label) }) else null,
+        placeholder = if (placeholder.isNotEmpty()) ({ Text(placeholder) }) else null,
+        leadingIcon = leadingIcon?.let { { Icon(it, null) } },
+        suffix = if (suffix.isNotEmpty()) ({
+            Text(
+                suffix,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }) else null,
+        minLines = minLines,
+        maxLines = maxLines,
+        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = keyboardActions,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(cornerRadius),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = focusedBorderColor,
+            unfocusedBorderColor = unfocusedBorderColor,
+            focusedLabelColor = focusedLabelColor
+        ),
+        visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+        trailingIcon = if (isPassword) {
+            {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        } else null
+    )
 }
 
 
@@ -279,3 +316,67 @@ fun ProgressIndicator(){
     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerField(
+    modifier: Modifier = Modifier,
+    value: String,
+    label: String = "Date",
+    onValueChange: (String) -> Unit,
+) {
+    var show by remember { mutableStateOf(false) }
+    val dateState = rememberDatePickerState()
+    Box(modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            trailingIcon = { TextButton(onClick = { show = true }) { Text("Pick") } },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                focusedLabelColor = MaterialTheme.colorScheme.primary
+            )
+        )
+    }
+    if (show) {
+        DatePickerDialog(
+            onDismissRequest = { show = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    dateState.selectedDateMillis?.let { millis ->
+                        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+                        val yyyy = cal.get(Calendar.YEAR)
+                        val mm = (cal.get(Calendar.MONTH) + 1).toString().padStart(2, '0')
+                        val dd = cal.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+                        onValueChange("$yyyy-$mm-$dd")
+                    }
+                    show = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { show = false }) { Text("Cancel") } }
+        ) { DatePicker(state = dateState) }
+    }
+}
+
+@Composable
+fun SnackBarMessage(
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState) {
+
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = modifier
+            .padding(16.dp)
+            .navigationBarsPadding() // avoid system bars
+    ) { data ->
+        Snackbar(
+            snackbarData = data,
+            shape = RoundedCornerShape(12.dp),
+        )
+    }
+}

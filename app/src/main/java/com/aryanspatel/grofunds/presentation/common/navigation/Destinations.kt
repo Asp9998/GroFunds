@@ -1,4 +1,4 @@
-package com.aryanspatel.grofunds.navigation
+package com.aryanspatel.grofunds.presentation.common.navigation
 
 enum class Destinations {
     AuthScreen,
@@ -7,5 +7,4 @@ enum class Destinations {
     ExpenseScreen,
     IncomeScreen,
     SavingScreen,
-    SettingsScreen
 }

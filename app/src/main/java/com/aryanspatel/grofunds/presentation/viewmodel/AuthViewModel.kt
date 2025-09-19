@@ -3,10 +3,10 @@ package com.aryanspatel.grofunds.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.common.DispatcherProvider
-import com.aryanspatel.grofunds.data.model.AuthState
-import com.aryanspatel.grofunds.data.model.UserProfile
+import com.aryanspatel.grofunds.data.remote.UserProfile
 import com.aryanspatel.grofunds.data.repository.AuthRepository
 import com.aryanspatel.grofunds.data.repository.UserRepository
+import com.aryanspatel.grofunds.presentation.common.AuthState
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -30,8 +30,6 @@ class AuthViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val dp: DispatcherProvider
 ) : ViewModel() {
-
-
 
     /** Reactive current Firebase user (null when signed out). */
     val user: StateFlow<FirebaseUser?> =

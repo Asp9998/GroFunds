@@ -1,5 +1,6 @@
-package com.aryanspatel.grofunds.data.model
+package com.aryanspatel.grofunds.data.remote
 
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 
 data class UserProfile(
@@ -9,9 +10,9 @@ data class UserProfile(
     val currency: String = "CAD",
     val aiConsent: Boolean = false,
     val providers: List<String> = emptyList(),
-    val createdAt: com.google.firebase.Timestamp? = null,
-    val updatedAt: com.google.firebase.Timestamp? = null,
-    val lastLoginAt: com.google.firebase.Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val updatedAt: Timestamp? = null,
+    val lastLoginAt: Timestamp? = null
 )
 
 fun DocumentSnapshot.toUserProfile(): UserProfile? =
