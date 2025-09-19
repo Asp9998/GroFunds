@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,9 +28,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.aryanspatel.grofunds.R
-import com.aryanspatel.grofunds.data.model.AuthState
-import com.aryanspatel.grofunds.data.model.OnboardingPage
-import com.aryanspatel.grofunds.navigation.Destinations
+import com.aryanspatel.grofunds.presentation.common.OnboardingPage
+import com.aryanspatel.grofunds.presentation.common.navigation.Destinations
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
@@ -71,7 +71,6 @@ fun AuthScreen(
 
     if (showSignUpScreen) {
         SignUpScreen(
-            navController = navController,
             viewModel = viewModel,
             uiState = uiState,
             onSighUpClick = {email, password, preferredName ->
@@ -83,8 +82,9 @@ fun AuthScreen(
 
     if (showLoginScreen) {
         LoginScreen(
-            viewModel = viewModel,
             uiState = uiState,
+            onResetState = { viewModel.resetState() },
+            onResetClick = {viewModel.resetPassword(it)},
             onLoginClick = {email, password ->
                 viewModel.signIn(email, password)
             }) {
@@ -96,8 +96,8 @@ fun AuthScreen(
 /**
  * Onboarding screen with:
  * - Auto-scrolling pager
- * - Indicators
- * - Bottom action buttons
+ * - Page indicators
+ * - Bottom action buttons { sign up / login }
  */
 @Composable
 fun OnboardingScreen(
@@ -108,25 +108,26 @@ fun OnboardingScreen(
 
     val pages = listOf(
         OnboardingPage(
-            title = "Set Financial Goals",
-            description = "Create personalized savings goals and track your progress. Whether it's an emergency fund or vacation, we'll help you get there.",
+            title = stringResource(R.string.onboarding_page_1_title),
+            description = stringResource(R.string.onboarding_page_1_description),
             image = painterResource(R.drawable.onboarding_img_1)
         ),
         OnboardingPage(
-            title = "Smart Guidance",
-            description = "Receive AI-powered recommendations and tips to optimize your spending and accelerate your savings journey.",
+            title = stringResource(R.string.onboarding_page_2_title),
+            description = stringResource(R.string.onboarding_page_2_description),
             image = painterResource(R.drawable.onboarding_img_2)
         ),
         OnboardingPage(
-            title = "Track Your Expenses",
-            description = "Monitor your daily spending and categorize expenses to understand where your money goes. Get detailed insights into your financial habits.",
+            title = stringResource(R.string.onboarding_page_3_title),
+            description = stringResource(R.string.onboarding_page_3_description),
             image = painterResource(R.drawable.onboarding_img_3)
         )
     )
 
-    // Auto-scroll pager every few seconds
+    /**
+     * Auto-scroll pager every 4 seconds
+     */
     LaunchedEffect(pagerState) {
-        if (pages.size <= 1) return@LaunchedEffect
         var direction = 1
         while (isActive) {
             delay(4000)
@@ -147,6 +148,11 @@ fun OnboardingScreen(
             }
         }
     }
+
+    /**
+     *     Main UI
+     */
+
     Surface(modifier = Modifier
         .background(Color.Transparent)
         .windowInsetsPadding(WindowInsets.statusBars)
@@ -159,6 +165,7 @@ fun OnboardingScreen(
                 .background(Color.Transparent)
                 .padding(vertical = 10.dp)
         ) {
+
             // Pager takes up remaining space
             OnboardingPager(
                 pages = pages,
@@ -168,27 +175,20 @@ fun OnboardingScreen(
                     .fillMaxWidth()
             )
 
-            // Page indicators above the buttons
             OnboardingIndicators(
                 pageCount = pages.size,
                 currentPage = pagerState.currentPage,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-    //                .padding(vertical = 16.dp)
             )
 
-            // Bottom action buttons (stick to bottom)
             AuthActionButtons(
                 onSignUpClick = onSignUpClick,
                 onLoginClick = onLoginClick,
                 modifier = Modifier
                     .fillMaxWidth()
-    //                .padding(horizontal = 16.dp, vertical = 8.dp)
             )
-
-    //        Spacer(modifier = Modifier.height(16.dp))
         }
-
     }
 }
 
@@ -275,16 +275,14 @@ private fun AuthActionButtons(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Sign up (filled button)
         Button(
-            text = "Sign Up",
+            text = stringResource(R.string.onboarding_sign_up_button_text),
             onClick = onSignUpClick,
             cornerRadius = 50.dp
         )
 
-        // Log in (outlined button)
         Button(
-            text = "Log In",
+            text = stringResource(R.string.onboarding_login_button_text),
             onClick = onLoginClick,
             isOutlined = true,
             cornerRadius = 50.dp
@@ -315,7 +313,6 @@ private fun OnboardingPageContent(
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.ExtraBold),
                 textAlign = TextAlign.Center,
-//                color = MaterialTheme.colorScheme.onPrimary
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -330,8 +327,6 @@ private fun OnboardingPageContent(
                 modifier = Modifier.padding(horizontal = 48.dp)
             )
         }
-
-//        Spacer(modifier = Modifier.height(25.dp))
 
         Box(
             modifier = Modifier.fillMaxWidth()

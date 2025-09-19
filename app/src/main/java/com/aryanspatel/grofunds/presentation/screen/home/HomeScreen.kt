@@ -51,9 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.aryanspatel.grofunds.data.model.UserProfile
-import com.aryanspatel.grofunds.navigation.Destinations
-import com.aryanspatel.grofunds.domain.usecase.AddExpenseScreen
+import com.aryanspatel.grofunds.data.remote.UserProfile
+import com.aryanspatel.grofunds.presentation.common.navigation.Destinations
+import com.aryanspatel.grofunds.presentation.screen.addEntry.AddExpenseScreen
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat

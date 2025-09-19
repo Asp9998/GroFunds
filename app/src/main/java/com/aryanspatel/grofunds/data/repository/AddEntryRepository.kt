@@ -1,13 +1,11 @@
-package com.aryanspatel.grofunds.domain.repository
+package com.aryanspatel.grofunds.data.repository
 
-import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.common.DispatcherProvider
 import com.aryanspatel.grofunds.common.awaitIo
-import com.aryanspatel.grofunds.domain.model.DraftRef
-import com.aryanspatel.grofunds.domain.model.ExpenseEdits
-import com.aryanspatel.grofunds.domain.model.GoalEdits
-import com.aryanspatel.grofunds.domain.model.IncomeEdits
-import com.aryanspatel.grofunds.domain.model.ParseState
+import com.aryanspatel.grofunds.presentation.common.DraftRef
+import com.aryanspatel.grofunds.presentation.common.ParseState
+import com.aryanspatel.grofunds.presentation.common.ParsedEntry
+import com.aryanspatel.grofunds.presentation.common.model.EntryKind
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -26,8 +24,6 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.String
-
 
 /**
  * Repository for creating/observing/saving/deleting GroFunds entries.
@@ -62,7 +58,7 @@ class AddEntryRepository @Inject constructor(
 
     /**
      * Creates a draft that triggers the CF (status = "pending").
-     * Returns the created document's [DraftRef] (id + fully-qualified path).
+     * Returns the created document's [com.aryanspatel.grofunds.presentation.common.DraftRef] (id + fully-qualified path).
      */
     suspend fun createDraft(
         kind: EntryKind,
@@ -93,7 +89,7 @@ class AddEntryRepository @Inject constructor(
             docRef.set(base).awaitIo(dp)
         }
         return DraftRef(
-            id   = docRef.id,
+            id = docRef.id,
             path = "users/$uid/$col/${docRef.id}",
             kind = kind
         )
@@ -122,7 +118,7 @@ class AddEntryRepository @Inject constructor(
             trySend(snap.toParseState())
         }
         awaitClose { reg.remove() }
-    }.buffer(Channel.CONFLATED)
+    }.buffer(Channel.Factory.CONFLATED)
 
     private fun DocumentSnapshot.toParseState(): ParseState {
         val d = data ?: emptyMap<String, Any?>()
@@ -141,10 +137,10 @@ class AddEntryRepository @Inject constructor(
 
     /**
      * Applies user edits and marks the entry as saved.
-     * - Stores date as a Firebase [Timestamp] (parsed from "yyyy-MM-dd").
+     * - Stores date as a Firebase [com.google.firebase.Timestamp] (parsed from "yyyy-MM-dd").
      * - Sets updatedAt server timestamp.
      */
-    suspend fun saveExpense(path: String, e: ExpenseEdits) {
+    suspend fun saveExpense(path: String, e: ParsedEntry.Expense) {
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
@@ -154,11 +150,11 @@ class AddEntryRepository @Inject constructor(
 
         val updateExpense = mapOf(
             "amount"     to e.amount,
-            "currency"   to e.currency.uppercase(Locale.ROOT),
+            "currency"   to (e.currency?.uppercase(Locale.ROOT) ?: "CAD"),
             "category"   to e.category,
             "subcategory" to e.subcategory,
             "merchant"   to e.merchant?.ifBlank { null },
-            "note"       to e.note?.ifBlank { null },
+            "note"       to e.notes?.ifBlank { null },
             "date"       to Timestamp(date),
             "status"     to "saved",
             "userEdited" to true,
@@ -170,7 +166,7 @@ class AddEntryRepository @Inject constructor(
         }
     }
 
-    suspend fun saveIncome(path: String, i: IncomeEdits) {
+    suspend fun saveIncome(path: String, i: ParsedEntry.Income) {
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
@@ -179,10 +175,10 @@ class AddEntryRepository @Inject constructor(
         }
         val updateIncome = mapOf(
             "amount"     to i.amount,
-            "currency"   to i.currency.uppercase(Locale.ROOT),
+            "currency"   to i.currency?.uppercase(Locale.ROOT),
             "type"       to i.type,
             "date"       to Timestamp(date),
-            "note"       to i.note?.ifBlank { null },
+            "note"       to i.notes?.ifBlank { null },
             "status"     to "saved",
             "updatedAt"  to FieldValue.serverTimestamp()
         )
@@ -191,7 +187,7 @@ class AddEntryRepository @Inject constructor(
         }
     }
 
-    suspend fun saveGoal(path: String, g: GoalEdits) {
+    suspend fun saveGoal(path: String, g: ParsedEntry.Goal) {
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
@@ -203,11 +199,11 @@ class AddEntryRepository @Inject constructor(
             "title"      to g.title,
             "type"   to g.type,
             "amount"  to g.amount,
-            "currency"      to g.currency.uppercase(Locale.ROOT),
+            "currency"      to g.currency?.uppercase(Locale.ROOT),
             "dueDate"       to g.dueDate,
             "startAmount"   to g.startAmount,
             "date"          to Timestamp(date),
-            "note"          to g.note?.ifBlank { null },
+            "note"          to g.notes?.ifBlank { null },
             "status"        to "saved",
             "updatedAt"  to FieldValue.serverTimestamp()
         )
@@ -240,8 +236,3 @@ class AddEntryRepository @Inject constructor(
         }
     }
 }
-
-
-
-
-

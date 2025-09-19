@@ -1,8 +1,8 @@
 package com.aryanspatel.grofunds.data.repository
 
 import com.aryanspatel.grofunds.common.DispatcherProvider
-import com.aryanspatel.grofunds.data.model.UserProfile
-import com.aryanspatel.grofunds.data.model.toUserProfile
+import com.aryanspatel.grofunds.data.remote.UserProfile
+import com.aryanspatel.grofunds.data.remote.toUserProfile
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore

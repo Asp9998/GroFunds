@@ -1,3 +1,92 @@
 <resources>
     <string name="app_name">GroFunds</string>
+
+
+
+<!--    Onboarding Screen-->
+    <string name="onboarding_page_1_title">Set Financial Goals</string>
+    <string name="onboarding_page_2_title">Smart Guidance</string>
+    <string name="onboarding_page_3_title">Track Your Expenses</string>
+
+    <string name="onboarding_page_1_description">Create personalized savings goals and track your progress. Whether it is an emergency fund or vacation, we will help you get there.</string>
+    <string name="onboarding_page_2_description">Receive AI-powered recommendations and tips to optimize your spending and accelerate your savings journey.</string>
+    <string name="onboarding_page_3_description">Monitor your daily spending and categorize expenses to understand where your money goes. Get detailed insights into your financial habits.</string>
+
+    <string name="onboarding_sign_up_button_text">Sign up</string>
+    <string name="onboarding_login_button_text">Log in</string>
+
+<!--    Sign up Screen & Login Screen -->
+    <string name="preferred_name">Preferred Name</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_password_label">Password</string>
+    <string name="signup_screen_action_button_text">Create an account</string>
+    <string name="login_screen_action_button_text">Log in</string>
+    <string name="login_screen_logo_text">GroFunds</string>
+    <string name="forgot_password_button_text">Forgot password?</string>
+
+<!--    login suggestion messages-->
+    <string name="email_already_in_use">This email is already in use with another account.</string>
+    <string name="invalid_email_password">Invalid password or email.</string>
+    <string name="no_internet_connect">Check your internet connection.</string>
+    <string name="no_account_found">No account found with this email.</string>
+
+<!--    password guiding messages-->
+    <string name="minimum_char">Minimum 8 characters.</string>
+    <string name="enter_valid_email">Please enter a valid email address.</string>
+    <string name="password_not_empty">Password cannot be empty.</string>
+    <string name="password_requirement">Password must be at least 8 characters, include a number, a letter, a special character and no space.</string>
+    
+<!--    Reset Password guide-->
+    <string name="reset_pass_screen_title">Reset your password</string>
+    <string name="reset_pass_email_entering_guide">Enter the email address associated with your account to reset your password.</string>
+    <string name="reset_pass_send_email_button_text">Continue</string>
+    <string name="reset_pass_resend_email_button_text">Resend email</string>
+    <string name="reset_pass_check_email_message">If an account exists with your email address, we just sent you an email with instructions to reset your password. Also, Check your Spam emails.</string>
+
+
+
+<!--    AddEntry Screen-->
+<!--    input section-->
+    <string name="add_expense_title">Describe your expense</string>
+    <string name="add_income_title">Describe your income</string>
+    <string name="add_goal_title">Describe your financial gaol</string>
+
+    <string name="common_headline">Our AI will parse the details for you</string>
+
+    <string name="add_expense_example">e.g. Groceries 50 Dollars Walmart</string>
+    <string name="add_income_example">e.g. July first week Salary 10k</string>
+    <string name="add_goal_example">e.g. Save 17k for first year tuition fees</string>
+
+    <string name="parse_button_text">Parse with AI</string>
+
+<!--    editable section-->
+<!--    header-->
+    <string name="header_title">Details</string>
+    <string name="header_description">Refine the parsed information</string>
+
+<!--    main-->
+    <string name="amount_label">Amount</string>
+    <string name="currency_label">Currency</string>
+    <string name="category_label">Category</string>
+    <string name="type_label">Type</string>
+    <string name="sub_cat_label">SubCategory</string>
+    <string name="merchant_label">Merchant (Optional)</string>
+    <string name="goal_title_label">Title</string>
+    <string name="goal_due_date_label">Due Date</string>
+    <string name="goal_start_amount_label">Start Amount</string>
+    <string name="entry_date_label">Date of Entry</string>
+    <string name="note_label">Additional Note (Optional)</string>
+
+<!--    Action Button Section-->
+    <string name="entry_screen_reset_button_text">Reset</string>
+    <string name="entry_screen_save_button_text">save</string>
+
+
+
+
+
+
+
+
+
 </resources>
