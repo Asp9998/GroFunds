@@ -1,7 +1,5 @@
 package com.aryanspatel.grofunds.presentation.common.navigation
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -17,7 +15,6 @@ import com.aryanspatel.grofunds.presentation.screen.profile.ProfileScreen
 import com.aryanspatel.grofunds.presentation.screen.savings.SavingScreen
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
 
-@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun NavGraph(
     authViewModel: AuthViewModel = hiltViewModel() // ViewModel to manage Firebase Auth state

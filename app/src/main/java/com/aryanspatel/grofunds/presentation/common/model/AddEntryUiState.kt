@@ -1,6 +1,7 @@
 package com.aryanspatel.grofunds.presentation.common.model
 
-import com.aryanspatel.grofunds.presentation.common.ParseState
+import com.aryanspatel.grofunds.domain.model.DraftRef
+import com.aryanspatel.grofunds.domain.model.EntryKind
 
 data class AddEntryUiState(
     val kind: EntryKind = EntryKind.EXPENSE,
@@ -29,16 +30,28 @@ data class AddEntryUiState(
     val parsePreview: String? = null,
     val parseError: String? = null,
 
-    // save
-    val isSaving: Boolean = false
 ) {
     companion object {
-        val INITIAL = AddEntryUiState()
+        fun initial(kind: EntryKind) = AddEntryUiState(kind = kind)
     }
 }
 
-enum class EntryKind {
-    EXPENSE,
-    INCOME,
-    GOAL
+/**
+ * Submit State is about storing the input note to the firebase
+ */
+sealed interface SubmitState {
+    data object Idle : SubmitState
+    data object Submitting : SubmitState
+    data class Success(val draft: DraftRef) : SubmitState
+    data class Error(val message: String) : SubmitState
+}
+
+/**
+ * Save State is about Storing the final Details into firebase
+ */
+sealed interface SaveState {
+    data object Idle : SaveState
+    data object Saving : SaveState
+    data class Success(val path: String) : SaveState
+    data class Error(val message: String) : SaveState
 }

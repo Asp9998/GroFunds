@@ -2,10 +2,10 @@ package com.aryanspatel.grofunds.data.repository
 
 import com.aryanspatel.grofunds.common.DispatcherProvider
 import com.aryanspatel.grofunds.common.awaitIo
-import com.aryanspatel.grofunds.presentation.common.DraftRef
-import com.aryanspatel.grofunds.presentation.common.ParseState
-import com.aryanspatel.grofunds.presentation.common.ParsedEntry
-import com.aryanspatel.grofunds.presentation.common.model.EntryKind
+import com.aryanspatel.grofunds.domain.model.DraftRef
+import com.aryanspatel.grofunds.domain.model.EntryKind
+import com.aryanspatel.grofunds.domain.model.ParseState
+import com.aryanspatel.grofunds.domain.model.ParsedEntry
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -58,7 +58,7 @@ class AddEntryRepository @Inject constructor(
 
     /**
      * Creates a draft that triggers the CF (status = "pending").
-     * Returns the created document's [com.aryanspatel.grofunds.presentation.common.DraftRef] (id + fully-qualified path).
+     * Returns the created document's [DraftRef] (id + fully-qualified path).
      */
     suspend fun createDraft(
         kind: EntryKind,
@@ -144,13 +144,18 @@ class AddEntryRepository @Inject constructor(
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            runCatching { sdf.parse(e.dateText) }.getOrNull() ?: Date()
+            val parsed: Date? = e.dateText?.let { txt ->
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                    isLenient = false
+                }
+                runCatching { sdf.parse(txt) }.getOrNull()
+            }
+            parsed ?: Date() // fallback to "now" if null/invalid
         }
 
         val updateExpense = mapOf(
             "amount"     to e.amount,
-            "currency"   to (e.currency?.uppercase(Locale.ROOT) ?: "CAD"),
+            "currency"   to (e.currency?.uppercase(Locale.ROOT)),
             "category"   to e.category,
             "subcategory" to e.subcategory,
             "merchant"   to e.merchant?.ifBlank { null },
@@ -170,8 +175,13 @@ class AddEntryRepository @Inject constructor(
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            runCatching { sdf.parse(i.dateText) }.getOrNull() ?: Date()
+            val parsed: Date? = i.dateText?.let { txt ->
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                    isLenient = false
+                }
+                runCatching { sdf.parse(txt) }.getOrNull()
+            }
+            parsed ?: Date() // fallback to "now" if null/invalid
         }
         val updateIncome = mapOf(
             "amount"     to i.amount,
@@ -191,8 +201,13 @@ class AddEntryRepository @Inject constructor(
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            runCatching { sdf.parse(g.dateText) }.getOrNull() ?: Date()
+            val parsed: Date? = g.dateText?.let { txt ->
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                    isLenient = false
+                }
+                runCatching { sdf.parse(txt) }.getOrNull()
+            }
+            parsed ?: Date() // fallback to "now" if null/invalid
         }
 
         val updateGoal = mapOf(
@@ -219,8 +234,7 @@ class AddEntryRepository @Inject constructor(
     // ─────────────────────────── Delete (ID) ──────────────────────────
 
     /**
-     * Deletes users/{uid}/{collection}/{id}.
-     * Use for cleanup on Reset/Back when the draft hasn't been saved.
+     * Deletes draft for path users/{uid}/{collection}/{id}  if not saved.
      */
 
     suspend fun deleteIfNotSaved(kind: EntryKind, id: String) {

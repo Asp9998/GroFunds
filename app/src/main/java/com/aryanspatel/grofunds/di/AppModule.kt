@@ -3,11 +3,11 @@ package com.aryanspatel.grofunds.di
 import com.aryanspatel.grofunds.common.DefaultDispatcherProvider
 import com.aryanspatel.grofunds.common.DispatcherProvider
 import com.aryanspatel.grofunds.data.repository.AuthRepository
-import com.aryanspatel.grofunds.data.repository.UserRepository
 import com.aryanspatel.grofunds.data.repository.AddEntryRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.PersistentCacheSettings
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,7 +35,7 @@ object AppModule {
     fun provideFirestore(): FirebaseFirestore {
         val db = FirebaseFirestore.getInstance()
         db.firestoreSettings = FirebaseFirestoreSettings.Builder()
-            .setPersistenceEnabled(true) // offline cache
+            .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
             .build()
         return db
     }
@@ -45,18 +45,10 @@ object AppModule {
     @Singleton
     fun provideAuthRepository(
         firebaseAuth: FirebaseAuth,
+        firebaseStore: FirebaseFirestore,
         dp: DispatcherProvider
-    ): AuthRepository = AuthRepository(firebaseAuth, dp)
+    ): AuthRepository = AuthRepository(firebaseAuth, firebaseStore, dp)
 
-
-    // Provide UserRepository (depends on FirebaseAuth and Firebase FireStore
-    @Provides
-    @Singleton
-    fun provideUserRepository(
-        firebaseAuth: FirebaseAuth,
-        firestore: FirebaseFirestore,
-        dp: DispatcherProvider
-    ): UserRepository = UserRepository(firebaseAuth, firestore, dp)
 
     // Provide AddEntryEntry Repository (depends on Firebase Auth and Firebase FireStore)
     @Provides

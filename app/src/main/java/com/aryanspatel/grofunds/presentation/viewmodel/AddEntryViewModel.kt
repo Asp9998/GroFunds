@@ -4,60 +4,248 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.common.DispatcherProvider
 import com.aryanspatel.grofunds.data.repository.AddEntryRepository
-import com.aryanspatel.grofunds.presentation.common.ParseState
-import com.aryanspatel.grofunds.presentation.common.ParsedEntry
-import com.aryanspatel.grofunds.presentation.common.SaveState
-import com.aryanspatel.grofunds.presentation.common.SubmitState
+import com.aryanspatel.grofunds.domain.model.EntryKind
+import com.aryanspatel.grofunds.domain.model.ParseState
+import com.aryanspatel.grofunds.domain.model.ParsedEntry
+import com.aryanspatel.grofunds.presentation.common.model.SaveState
+import com.aryanspatel.grofunds.presentation.common.model.SubmitState
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
-import com.aryanspatel.grofunds.presentation.common.model.EntryKind
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
 
-/**
- * ViewModel for the “Add Entry” flow.
- *
- * Exposes three state machines:
- *  - submitState: create draft (status="pending") -> Success(draft) | Error
- *  - state:      live parse state of the created document (Pending | Ready | Error)
- *  - saveState:  saving user edits -> Success(path) | Error
- *
- * Public API:
- *  - submitNote(kind, note, hints...)        // create draft & trigger CF
- *  - start(path) / clear()                    // begin/stop listening to the doc
- *  - saveExpense(path, edits) + resetSaveState()
- *  - resetState()                             // reset submitState to Idle
- *  - deleteById(kind, id)                     // clean up draft by doc id
- */
 @HiltViewModel
 class AddEntryViewModel @Inject constructor(
     private val repo: AddEntryRepository,
     private val dp: DispatcherProvider
 ) : ViewModel() {
 
-    // ───────────────────────── Draft creation state ─────────────────────────
 
+    /**  Input Note State */
     private val _submitState = MutableStateFlow<SubmitState>(SubmitState.Idle)
     val submitState: StateFlow<SubmitState> = _submitState
 
-    private val _state = MutableStateFlow<ParseState>(ParseState.Pending(note = null))
-    val state: StateFlow<ParseState> = _state
+    /** Editable details state after parsing user entered note to firebase */
+    private val _parsedState = MutableStateFlow<ParseState>(ParseState.Pending(note = null))
+    val parsedState: StateFlow<ParseState> = _parsedState
 
+    /** Save Sate of Entry after making changes by user */
+    private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
+    val saveState: StateFlow<SaveState> = _saveState
+
+    /** Main UI states  -  used in UI */
     private val _uiState = MutableStateFlow(AddEntryUiState())
     val uiState: StateFlow<AddEntryUiState> = _uiState
-    
-    /**
-     * Create a draft document and emit SubmitState.Success(draft) on success.
-     * The UI should then call start(draft.path) to observe parsing updates.
-     */
-    fun submitNote(
+
+    /** One-shot events  - used in UI */
+    private val _events = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val events: SharedFlow<String> = _events
+
+    /**  Conditions to check before saving Entry - used in UI*/
+    val canSave: StateFlow<Boolean> =
+        combine(uiState, saveState) { ui, save ->
+            val isSaving = save is SaveState.Saving
+            val amountOk = ui.amount.trim().toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true
+
+            val fieldsOk = when (ui.kind) {
+                EntryKind.EXPENSE -> amountOk && ui.categoryOrType.isNotBlank() && ui.expenseSubcategory.isNotBlank()
+
+                EntryKind.INCOME  -> amountOk && ui.categoryOrType.isNotBlank()
+
+                EntryKind.GOAL    -> amountOk && ui.categoryOrType.isNotBlank() && ui.goalTitle.isNotBlank() && ui.goalDueDate.isNotBlank()
+            }
+
+            !isSaving && fieldsOk
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Used in UI to check is it loading */
+    val isLoading = combine(submitState, parsedState, uiState) { submit, parse, ui ->
+        (submit is SubmitState.Submitting) ||
+                (ui.docPath != null && !ui.isParsed && parse is ParseState.Pending)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+
+    init {
+
+        /** Note input submit state - if success -> {update draft id & path, and start observing snapshot} */
+        /**                           if failed  -> {show error via one-shot even} */
+        submitState
+            .onEach { state ->
+                when (state) {
+                    is SubmitState.Success -> {
+                        onDraftIdChanged(state.draft.id)
+                        onDocPathChanged(state.draft.path)
+                        start(state.draft.path)
+                    }
+
+                    is SubmitState.Error -> {
+                        val msg = state.message
+                        if (!uiState.value.isParsed && msg.isNotBlank()) {
+                            _events.tryEmit(msg)
+                        }
+                    }
+                    else -> Unit
+                }
+            }
+            .launchIn(viewModelScope)
+
+        /** snapshot observing state after parsing input
+         *              - if success -> {map snapshot to AddEntryUiState} */
+        /**             - if failed  -> {show error via one-shot even} */
+        parsedState
+            .filter {!_uiState.value.isParsed }
+            .onEach { state ->
+                when(state){
+                    is ParseState.Ready -> {
+
+                        setParseData()
+                    }
+                    is ParseState.Error -> {
+                        val msg = state.message
+                        if (msg.isNotBlank()) {
+                            _events.tryEmit(msg)
+                        }
+                    }
+                    else -> Unit
+                }
+            }.launchIn(viewModelScope)
+
+        /** Save final refined details state
+         *              - if success -> {reset the screen} */
+        /**             - if failed  -> {show error via one-shot even} */
+        saveState
+            .onEach { state ->
+                when (state){
+                    is SaveState.Success -> {
+                        resetScreen(_uiState.value.kind)
+                    }
+                    is SaveState.Error -> {
+                        val msg = state.message
+                        if(msg.isNotBlank()){
+                        _events.tryEmit(msg)
+                        }
+                    }
+                    else -> Unit
+                }
+            }.launchIn(viewModelScope)
+        
+    }
+
+    /** Functions, getting used in UI*/
+
+    fun onParsedButtonClick(){
+        _uiState.value.draftId?.let { deleteDraftIfUnsaved(_uiState.value.kind, it) }
+        onIsParsedChanged(false)
+        clear()
+        resetSubmitState()
+        onDocPathChanged(null)
+        onDraftIdChanged(null)
+
+        submitNote(
+            kind = _uiState.value.kind,
+            note = uiState.value.inputNote,
+            currencyHint = "CAD",
+            localeHint = "en-CA")
+    }
+
+    fun onSaveButtonClick(){
+        val uiState = _uiState.value
+        val path = _uiState.value.docPath?.takeIf { it.isNotBlank() } ?: return
+        val amt = _uiState.value.amount.trim().toDoubleOrNull() ?: run { return }
+
+        when (uiState.kind) {
+            EntryKind.EXPENSE -> {
+                saveExpense(
+                    path = path,
+                    edits = ParsedEntry.Expense(
+                        amount = amt,
+                        currency = uiState.currency,
+                        category = uiState.categoryOrType,
+                        subcategory = uiState.expenseSubcategory,
+                        merchant = uiState.expenseMerchant.ifBlank { null },
+                        dateText = uiState.date,
+                        notes = uiState.note.ifBlank { null },
+                    )
+                )
+            }
+
+            EntryKind.INCOME -> {
+                saveIncome(
+                    path = path,
+                    edits = ParsedEntry.Income(
+                        amount = amt,
+                        currency = uiState.currency,
+                        type = uiState.categoryOrType,
+                        dateText = uiState.date,
+                        notes = uiState.note.ifBlank { null }
+                    )
+                )
+            }
+
+            EntryKind.GOAL -> {
+                val stAmt = uiState.goalStartAmount.trim().toDoubleOrNull() ?: 0.0
+                val title = uiState.goalTitle.ifBlank { return }
+
+                saveGoal(
+                    path = path,
+                    edits = ParsedEntry.Goal(
+                        title = title,
+                        amount = amt,
+                        currency = uiState.currency,
+                        type = uiState.categoryOrType,
+                        dateText = uiState.date,
+                        notes = uiState.note.ifBlank { null },
+                        dueDate = uiState.goalDueDate,
+                        startAmount = stAmt,
+                    )
+                )
+            }
+        }
+    }
+
+    fun resetScreen(selectedOption: EntryKind){
+        uiState.value.draftId?.let { deleteDraftIfUnsaved(selectedOption, it) }
+        resetSubmitState()
+        resetSaveState()
+        clear()
+        updateAddEntryUiStateWithNewEntryKind(selectedOption)
+    }
+
+    fun onInputNoteChanged(v: String)         = _uiState.update { it.copy(inputNote = v) }
+    fun onAmountChanged(v: String)            = _uiState.update { it.copy(amount = v) }
+    fun onCurrencyChanged(v: String)          = _uiState.update { it.copy(currency = v) }
+    fun onDateChanged(v: String)              = _uiState.update { it.copy(date = v) }
+    fun onCategoryOrTypeChanged(v: String)    = _uiState.update { it.copy(categoryOrType = v) }
+    fun onExpenseSubChanged(v: String)        = _uiState.update { it.copy(expenseSubcategory = v) }
+    fun onExpenseMerchantChanged(v: String)   = _uiState.update { it.copy(expenseMerchant = v) }
+    fun onGoalTitleChanged(v: String)         = _uiState.update { it.copy(goalTitle = v) }
+    fun onGoalDueDateChanged(v: String)       = _uiState.update { it.copy(goalDueDate = v) }
+    fun onGoalStartAmountChanged(v: String)   = _uiState.update { it.copy(goalStartAmount = v) }
+    fun onNoteChanged(v: String)              = _uiState.update { it.copy(note = v) }
+    fun onDocPathChanged(v: String?)           = _uiState.update { it.copy(docPath = v) }
+    fun onDraftIdChanged(v: String?)           = _uiState.update { it.copy(draftId = v) }
+    fun onIsParsedChanged(v: Boolean)          = _uiState.update { it.copy(isParsed = v) }
+    fun onSelectedOptionChanged(v: EntryKind)  = _uiState.update { it.copy(kind = v) }
+
+    /** ───────────────────────── Note input  ───────────────────────── */
+
+    // Note submission
+    private fun submitNote(
         kind: EntryKind,
         note: String,
         currencyHint: String? = null,
@@ -81,68 +269,62 @@ class AddEntryViewModel @Inject constructor(
         }
     }
 
-    /** Reset the draft creation state machine to Idle. */
-    fun resetState() { _submitState.value = SubmitState.Idle }
-
-    // ───────────────────────── Parse/observe state ─────────────────────────
+    private fun resetSubmitState() { _submitState.value = SubmitState.Idle }
 
 
+
+
+    /** ───────────────────────── Parse/observe  ───────────────────────── */
 
     private var watchJob: Job? = null
     private var currentPath: String? = null
 
     /** Start (or restart) listening to a document path produced by submitNote(). */
-    fun start(path: String) {
+
+    private fun start(path: String) {
         if (currentPath == path && watchJob?.isActive == true) return
         watchJob?.cancel()
         currentPath = path
-        _state.value = ParseState.Pending(note = null)
+        _parsedState.value = ParseState.Pending(note = null)
 
-        watchJob = viewModelScope.launch {
-            repo.observe(path).collect { emitted ->
+        watchJob = viewModelScope.launch(dp.iO) {
+            repo.observe(path).collect {emitted ->
                 // Ignore late emissions from a canceled/older listener
-                if (currentPath == path) _state.value = emitted
+                if (currentPath == path) _parsedState.value = emitted
             }
         }
     }
 
     /** Stop listening and reset the parse state to a neutral pending state. */
-    fun clear() {
+    private fun clear() {
         currentPath = null
         watchJob?.cancel()
         watchJob = null
-        _state.value = ParseState.Pending(note = null)
+        _parsedState.value = ParseState.Pending(note = null)
     }
 
-    // ───────────────────────────── Saving state ─────────────────────────────
-
-    private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
-    val saveState: StateFlow<SaveState> = _saveState
-
-
-
     /** Set the ui State after parsing input  **/
-    fun setParseData(){
+    private fun setParseData() = viewModelScope.launch(dp.default){
 
         _uiState.update { ui ->
-            when (_state.value) {
+            when (_parsedState.value) {
                 is ParseState.Pending -> {
                     ui.copy(
                         parseError = null,
-                        parsePreview = (_state.value as ParseState.Pending).note,   // show the raw note while CF is working
+                        parsePreview = (_parsedState.value as ParseState.Pending).note,   // show the raw note while CF is working
                         // optional: add isParsing flag to ui if you want
                     )
                 }
 
                 is ParseState.Error -> {
                     ui.copy(
-                        parseError = (_state.value as ParseState.Error).message,
+                        parseError = (_parsedState.value as ParseState.Error).message,
                         parsePreview = null
                     )
                 }
 
                 is ParseState.Ready -> {
-                    val parsed = mapToParsedEntry((_state.value as ParseState.Ready).data, ui.kind)
+                    val parsed = mapToParsedEntry((_parsedState.value as ParseState.Ready).data, ui.kind)
 
                     // Helpers: only fill if parsed has a non-blank value
                     fun String?.orKeep(old: String): String =
@@ -195,36 +377,9 @@ class AddEntryViewModel @Inject constructor(
         }
     }
 
-    fun onInputNoteChanged(v: String)         = _uiState.update { it.copy(inputNote = v) }
-    fun onAmountChanged(v: String)            = _uiState.update { it.copy(amount = v) }
-    fun onCurrencyChanged(v: String)          = _uiState.update { it.copy(currency = v) }
-    fun onDateChanged(v: String)              = _uiState.update { it.copy(date = v) }
-    fun onCategoryOrTypeChanged(v: String)    = _uiState.update { it.copy(categoryOrType = v) }
-    fun onExpenseSubChanged(v: String)        = _uiState.update { it.copy(expenseSubcategory = v) }
-    fun onExpenseMerchantChanged(v: String)   = _uiState.update { it.copy(expenseMerchant = v) }
-    fun onGoalTitleChanged(v: String)         = _uiState.update { it.copy(goalTitle = v) }
-    fun onGoalDueDateChanged(v: String)       = _uiState.update { it.copy(goalDueDate = v) }
-    fun onGoalStartAmountChanged(v: String)   = _uiState.update { it.copy(goalStartAmount = v) }
-    fun onNoteChanged(v: String)              = _uiState.update { it.copy(note = v) }
-    fun onDocPathChanged(v: String?)           = _uiState.update { it.copy(docPath = v) }
-    fun onDraftIdChanged(v: String?)           = _uiState.update { it.copy(draftId = v) }
-    fun onIsParsedChanged(v: Boolean)          = _uiState.update { it.copy(isParsed = v) }
 
-    fun updateUiState() {
-        _uiState.update {
-            AddEntryUiState.INITIAL.copy()
-        }
-        // If you keep a parse listener job, cancel it here.
-        // Also optionally delete unsaved draft (if you create drafts before save).
-    }
-
-
-
-
-
-
-    /** Apply edits to the same document and mark it saved. */
-    fun saveExpense(path: String, edits: ParsedEntry.Expense) {
+    /** ───────────────────────── Save Entry  ───────────────────────── */
+    private fun saveExpense(path: String, edits: ParsedEntry.Expense) {
         _saveState.value = SaveState.Saving
         viewModelScope.launch(dp.iO) {
             runCatching { repo.saveExpense(path, edits) }
@@ -233,7 +388,7 @@ class AddEntryViewModel @Inject constructor(
         }
     }
 
-    fun saveIncome(path: String, edits: ParsedEntry.Income) {
+    private fun saveIncome(path: String, edits: ParsedEntry.Income) {
         _saveState.value = SaveState.Saving
         viewModelScope.launch(dp.iO) {
             runCatching { repo.saveIncome(path, edits) }
@@ -242,7 +397,7 @@ class AddEntryViewModel @Inject constructor(
         }
     }
 
-    fun saveGoal(path: String, edits: ParsedEntry.Goal) {
+    private fun saveGoal(path: String, edits: ParsedEntry.Goal) {
         _saveState.value = SaveState.Saving
         viewModelScope.launch(dp.iO) {
             runCatching { repo.saveGoal(path, edits) }
@@ -251,19 +406,26 @@ class AddEntryViewModel @Inject constructor(
         }
     }
 
-    /** Reset the saving state machine to Idle. */
-    fun resetSaveState() { _saveState.value = SaveState.Idle }
+    private fun resetSaveState() { _saveState.value = SaveState.Idle }
 
-    // ───────────────────────────── Deletion API ─────────────────────────────
-
-    /** Delete a draft by its document ID (users/{uid}/{collection}/{id}). */
+    /** Delete a unsaved draft by its document ID (users/{uid}/{collection}/{id}). */
     fun deleteDraftIfUnsaved(kind: EntryKind, id: String) {
         viewModelScope.launch(dp.iO) { runCatching { repo.deleteIfNotSaved(kind, id) } }
     }
+
+
+    /** ───────────────────────── Extras  ───────────────────────── */
+    private fun updateAddEntryUiStateWithNewEntryKind(newOption: EntryKind) {
+        _uiState.update {
+            AddEntryUiState.initial(kind = newOption)
+        }
+    }
+
 }
 
 
 
+/** ───────────────────────── Map UI State  ───────────────────────── */
 
 private data class KeyMap(
     val amount: List<String> = emptyList(),
@@ -278,11 +440,11 @@ private data class KeyMap(
     val extras: Map<String, List<String>> = emptyMap()
 )
 
-fun mapToParsedEntry(
+private fun mapToParsedEntry(
     doc: Map<String, Any?>,
     kind: EntryKind
 ): ParsedEntry {
-    val result = (doc["result"] as? Map<*, *>)?.mapKeys { it.key.toString() } ?: emptyMap<String, Any?>()
+    val result = (doc["result"] as? Map<*, *>)?.mapKeys { it.key.toString() } ?: emptyMap()
 
     fun firstString(vararg keys: String): String? =
         keys.firstNotNullOfOrNull { k -> (doc[k] ?: result[k]) as? String }?.takeIf { it.isNotBlank() }
@@ -346,14 +508,14 @@ fun mapToParsedEntry(
 
     return when (kind) {
         EntryKind.EXPENSE -> ParsedEntry.Expense(
-            amount      = firstNumber(*km.amount.toTypedArray()),
-            currency    = up(firstString(*km.currency.toTypedArray())),
-            category    = firstString(*km.category.toTypedArray()),
+            amount = firstNumber(*km.amount.toTypedArray()),
+            currency = up(firstString(*km.currency.toTypedArray())),
+            category = firstString(*km.category.toTypedArray()),
             subcategory = firstString(*km.subcategory.toTypedArray()),
-            merchant    = firstString(*km.party.toTypedArray()),
-            dateText    = normalizeDate(km.date),
-            notes       = firstString(*km.notes.toTypedArray()),
-            confidence  = firstNumber(*km.confidence.toTypedArray())
+            merchant = firstString(*km.party.toTypedArray()),
+            dateText = normalizeDate(km.date),
+            notes = firstString(*km.notes.toTypedArray()),
+            confidence = firstNumber(*km.confidence.toTypedArray())
         )
 
         EntryKind.INCOME -> ParsedEntry.Income(

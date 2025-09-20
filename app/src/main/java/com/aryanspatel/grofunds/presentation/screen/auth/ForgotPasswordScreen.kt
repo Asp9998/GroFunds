@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.R
-import com.aryanspatel.grofunds.presentation.common.AuthState
+import com.aryanspatel.grofunds.presentation.common.model.AuthState
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
