@@ -145,7 +145,9 @@ fun HorizontalSlidingOverlay(
                 verticalArrangement = Arrangement.Top
             ) {
                 // Reusable header with back button + title
-                HorizontalSlidingOverlayHeader(title = title, onBackClick = { animateDismiss() })
+                HorizontalSlidingOverlayHeader(title = title,
+                    onBackClick = { animateDismiss() }
+                )
                 content()
             }
         }

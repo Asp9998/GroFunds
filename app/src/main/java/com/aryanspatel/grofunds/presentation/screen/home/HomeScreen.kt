@@ -1,7 +1,5 @@
 package com.aryanspatel.grofunds.presentation.screen.home
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -59,7 +57,6 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -210,7 +207,6 @@ fun HomeScreen(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun HeaderSection(
     userProfile: State<UserProfile?>,

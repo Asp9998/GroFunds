@@ -5,8 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.common.DispatcherProvider
 import com.aryanspatel.grofunds.data.remote.UserProfile
 import com.aryanspatel.grofunds.data.repository.AuthRepository
-import com.aryanspatel.grofunds.data.repository.UserRepository
-import com.aryanspatel.grofunds.presentation.common.AuthState
+import com.aryanspatel.grofunds.presentation.common.model.AuthState
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -27,7 +26,6 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val userRepository: UserRepository,
     private val dp: DispatcherProvider
 ) : ViewModel() {
 
@@ -45,7 +43,7 @@ class AuthViewModel @Inject constructor(
     val profile: StateFlow<UserProfile?> =
         user
             .flatMapLatest { u ->
-                if (u == null) flowOf(null) else userRepository.userProfileFlowFor(u.uid)
+                if (u == null) flowOf(null) else authRepository.userProfileFlowFor(u.uid)
             }
             .distinctUntilChanged()
             .stateIn(
@@ -63,7 +61,7 @@ class AuthViewModel @Inject constructor(
         authRepository.signIn(email, password)
             .onSuccess {
                 // Try to upsert profile; don't block sign-in if this fails
-                userRepository.upsertUserProfileMinimal()
+                authRepository.upsertUserProfileMinimal()
                     .onFailure {
                         _uiState.value = AuthState.Error(message = it.message ?: "Profile update failed") }
                 _uiState.value = AuthState.LoggedIn
@@ -78,7 +76,7 @@ class AuthViewModel @Inject constructor(
         authRepository.signUp(email, password)
             .onSuccess {
                 val nameOverride = preferredName.takeIf { it.isNotBlank() }
-                userRepository.upsertUserProfileMinimal(nameOverride)
+                authRepository.upsertUserProfileMinimal(nameOverride)
                     .onFailure {
                         _uiState.value = AuthState.Error(message = it.message ?: "Profile save failed") }
                 _uiState.value = AuthState.LoggedIn
@@ -101,7 +99,6 @@ class AuthViewModel @Inject constructor(
         authRepository.signOut()
         // user/profile flows will emit null automatically
     }
-
 
     fun resetState() { _uiState.value = AuthState.Idle }
 }

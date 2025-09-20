@@ -32,22 +32,19 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aryanspatel.grofunds.R
-import com.aryanspatel.grofunds.presentation.common.CURRENCY_LIST_ENUM
-import com.aryanspatel.grofunds.presentation.common.EXPENSE_CATEGORY_ENUM
-import com.aryanspatel.grofunds.presentation.common.GOAL_TYPE_ENUM
-import com.aryanspatel.grofunds.presentation.common.INCOME_TYPE_ENUM
-import com.aryanspatel.grofunds.presentation.common.ParseState
-import com.aryanspatel.grofunds.presentation.common.ParsedEntry
-import com.aryanspatel.grofunds.presentation.common.SaveState
-import com.aryanspatel.grofunds.presentation.common.SubmitState
+import com.aryanspatel.grofunds.domain.model.EntryKind
+import com.aryanspatel.grofunds.presentation.common.model.CURRENCY_LIST_ENUM
+import com.aryanspatel.grofunds.presentation.common.model.EXPENSE_CATEGORY_ENUM
+import com.aryanspatel.grofunds.presentation.common.model.GOAL_TYPE_ENUM
+import com.aryanspatel.grofunds.presentation.common.model.INCOME_TYPE_ENUM
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
-import com.aryanspatel.grofunds.presentation.common.model.EntryKind
-import com.aryanspatel.grofunds.presentation.common.subcategoriesFor
+import com.aryanspatel.grofunds.presentation.common.model.subcategoriesFor
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.DatePickerField
 import com.aryanspatel.grofunds.presentation.viewmodel.AddEntryViewModel
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
+import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
 import com.aryanspatel.grofunds.utils.cleanAmountInput
 import kotlinx.coroutines.launch
 
@@ -58,89 +55,67 @@ import kotlinx.coroutines.launch
  * 1) User writes a free-form note and taps "Parse with AI".
  * 2) We create a Firestore draft (status = "pending") and start listening to it.
  * 3) When Cloud Function finishes, we prefill editable fields and show the Details section.
- * 4) Save -> update the same doc and mark status = "saved".
+ * 4) Save -> update the same doc and mark status = "saved" && reset all fields for next input.
  * 5) Reset/Back/Dismiss (while not saved) -> delete draft by ID for cleanliness.
- *
- * Requires ViewModel with:
- *  - submitState: SubmitState
- *  - state: ParseState (listener on the doc)
- *  - saveState: SaveState
- *  - submitNote(kind, note, ...), saveExpense(path, edits)
- *  - start(path), clear()      // start/stop observation of a doc
- *  - deleteById(kind, id)      // delete users/{uid}/{collection}/{id}
- *  - resetState(), resetSaveState()
  */
+
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun AddExpenseScreen(
     onDismiss: () -> Unit,
     viewModel: AddEntryViewModel = hiltViewModel()
 ) {
-    // ───────────────────── ViewModel states ─────────────────────
-    val submit by viewModel.submitState.collectAsStateWithLifecycle()   // draft creation
-    val parse by viewModel.state.collectAsStateWithLifecycle()          // Firestore listener
-    val save by viewModel.saveState.collectAsStateWithLifecycle()       // save action
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()      // UiState collector
 
-    // Input helpers
+    /**
+     *  View Model States
+     */
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val canSave by viewModel.canSave.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()      // UiState collector
+    val selectedOption =  uiState.kind
+
+
+    /**
+     * Input helpers
+     */
     val keyboardController = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var prevKind by remember { mutableStateOf(uiState.kind) } // keep old EntryKind value
 
-    val isLoading = submit is SubmitState.Submitting || (uiState.docPath != null && !uiState.isParsed && parse is ParseState.Pending)
-    val isSaving = save is SaveState.Saving
+    /**
+     * Listen for one-shot events (To show case Errors)
+     */
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { message ->
+            snackbarHostState.showSnackbar(message)
 
-    // Toggle Options : Expense, Income & Goal
-    var selectedOption by remember { mutableStateOf(EntryKind.EXPENSE) }
-    var prevKind by remember { mutableStateOf(selectedOption) } // keep old value
-
-    // reset function to clear everything
-    fun reset() {
-        // Delete draft by ID if entry isn't saved yet
-        uiState.draftId?.let { viewModel.deleteDraftIfUnsaved(selectedOption, it) }
-
-        // Clear UI + VM state
-        viewModel.resetState()
-        viewModel.resetSaveState()
-        viewModel.clear()
-        viewModel.updateUiState()
+        }
     }
 
-    // Reset when selectedOption changes
-    LaunchedEffect(selectedOption) {
-        if (prevKind != selectedOption) {
+    /**
+     *  Reset Everything when click on reset button, change Entry king and OnDismiss().
+     */
+    fun reset() {
+        viewModel.resetScreen(selectedOption)
+    }
+
+
+    /**
+     *  OnEntryKind change ->
+     *  1. remove unsaved craft from the firebase firestore
+     *  2. Reset all UI State with updated EntryKind
+     */
+    fun onEntryKindChange(newKind: EntryKind){
+        if(prevKind != selectedOption){
             uiState.draftId?.let { viewModel.deleteDraftIfUnsaved(prevKind, it) }
             reset()
             prevKind = selectedOption
         }
+        viewModel.onSelectedOptionChanged(v = newKind)
     }
 
-
-    // ───────────────────── Effects ─────────────────────
-    // Draft created -> remember ID/path and start listening
-    LaunchedEffect((submit as? SubmitState.Success)?.draft) {
-        val draft = (submit as? SubmitState.Success)?.draft ?: return@LaunchedEffect
-        viewModel.onDraftIdChanged(draft.id)
-        viewModel.onDocPathChanged(draft.path)
-        viewModel.start(draft.path)
-    }
-
-    // Listen to Firebase FireStore and set the UI States
-    LaunchedEffect(parse) {
-        if (parse is ParseState.Ready && !uiState.isParsed) {
-            viewModel.setParseData()
-        }
-    }
-
-
-    // Save succeeded -> clear everything for the next add
-    LaunchedEffect(save) {
-        if (save is SaveState.Success) {
-            reset()
-        }
-    }
-
-    // System back: delete draft by ID if not saved, then dismiss
     BackHandler(true) {
         scope.launch {
             reset()
@@ -148,7 +123,10 @@ fun AddExpenseScreen(
         }
     }
 
-    // ───────────────────── UI ─────────────────────
+
+    /**
+     *     Main UI  -  Horizontal sliding screen with EntryKindToggleButton, NoteInputSection, EditableDetailsSection and ActionButtonSection.
+     */
 
     HorizontalSlidingOverlay(
         title = "Add Entry",
@@ -159,188 +137,98 @@ fun AddExpenseScreen(
             }
         }
     ) {
-        Column (
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 16.dp),
-//            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()){
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
 
-            // toggle button
+                // EntryKindToggleButton
                 AnimatedToggleButton(
                     selectedOption = selectedOption,
-                    onOptionSelected = { selectedOption = it })
+                    onOptionSelected = { onEntryKindChange(newKind = it) })
 
-            // 1) Free-form Note
+                // NoteInputSection
                 NoteInputSection(
                     selectedOption = selectedOption,
                     inputNote = uiState.inputNote,
                     isLoading = isLoading,
-                    onNoteValueChange = { viewModel.onInputNoteChanged(it )},
+                    onNoteValueChange = { viewModel.onInputNoteChanged(it) },
                     onParseButtonClick = {
                         keyboardController?.hide(); focus.clearFocus()
-                        // Delete previous unsaved draft by ID, if any
-                        uiState.draftId?.let { viewModel.deleteDraftIfUnsaved(selectedOption, it) }
-                        // Reset UI + VM parsing state
-                        viewModel.onIsParsedChanged(false)
-                        viewModel.clear()
-                        viewModel.resetState()
-                        viewModel.onDocPathChanged(null)
-                        viewModel.onDraftIdChanged(null)
-
-                        viewModel.submitNote(
-                            kind = selectedOption,
-                            note = uiState.inputNote,
-                            currencyHint = "CAD",
-                            localeHint = "en-CA")
+                        focus.clearFocus()
+                        viewModel.onParsedButtonClick()
                     }
                 )
 
+                // Loading or Editable Details Section
+                if (isLoading) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth()
+                    ) {
+                        CircularProgressIndicator(
+                            strokeWidth = 3.dp,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    }
+                } else {
+
+                    // Summary (once parsed)
+                    AnimatedVisibility(
+                        visible = uiState.isParsed,
+                        enter = slideInVertically(animationSpec = tween(100)) + fadeIn(
+                            tween(100)
+                        ),
+                        exit = slideOutVertically() + fadeOut()
+                    ) {
+                        SummaryCard(
+                            amount = uiState.amount,
+                            currency = uiState.currency,
+                            category = uiState.categoryOrType,
+                            merchant = uiState.expenseMerchant,
+                            date = uiState.date
+                        )
+                    }
+
+                    // EditableDetailsSection
+                    EditableDetailsSection(
+                        state = uiState,
+                        selectedOption = selectedOption,
+                        onAmountValueSChanged = { viewModel.onAmountChanged(it) },
+                        onCurrencyValueChanged = { viewModel.onCurrencyChanged(it) },
+                        onCategoryOrTypeValueChanged = { viewModel.onCategoryOrTypeChanged(it) },
+                        onExpenseSubcategoryValueChanged = { viewModel.onExpenseSubChanged(it) },
+                        onExpenseMerchantValueChanged = { viewModel.onExpenseMerchantChanged(it) },
+                        onNoteValueChange = { viewModel.onNoteChanged(it) },
+                        onWhenTextValueChange = { viewModel.onDateChanged(it) },
+                        onGoalTitleValueChange = { viewModel.onGoalTitleChanged(it) },
+                        onGoalDueDateValueChange = { viewModel.onGoalDueDateChanged(it) },
+                        onGoalStartAmountValueChanged = { viewModel.onGoalStartAmountChanged(it) }
+                    )
 
 
-            if(isLoading){
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth()
-                ) {
-                    CircularProgressIndicator(strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primaryContainer)
-                }
-            }else{
-
-                // 2) Summary (once parsed)
-                AnimatedVisibility(
-                    visible = uiState.isParsed,
-                    enter = slideInVertically(animationSpec = tween(100)) + fadeIn(
-                        tween(100)
-                    ),
-                    exit = slideOutVertically() + fadeOut()
-                ) {
-                    SummaryCard(
-                        amount = uiState.amount,
-                        currency = uiState.currency,
-                        category = uiState.categoryOrType,
-                        merchant = uiState.expenseMerchant,
-                        date = uiState.date
+                    // ActionButtonSection
+                    BottomActonButton(
+                        isParsed = uiState.isParsed,
+                        onResetClick = { reset() },
+                        enabled = canSave,
+                        onSaveButtonClick = { viewModel.onSaveButtonClick() }
                     )
                 }
-
-
-                EditableDetailsSection(
-                    state = uiState,
-                    selectedOption = selectedOption,
-                    onAmountValueSChanged = { viewModel.onAmountChanged(it)},
-                    onCurrencyValueChanged = { viewModel.onCurrencyChanged(it)},
-                    onCategoryOrTypeValueChanged = { viewModel.onCategoryOrTypeChanged(it)},
-                    onExpenseSubcategoryValueChanged = {viewModel.onExpenseSubChanged(it)},
-                    onExpenseMerchantValueChanged = {viewModel.onExpenseMerchantChanged(it)},
-                    onNoteValueChange = {viewModel.onNoteChanged(it)},
-                    onWhenTextValueChange = {viewModel.onDateChanged(it)},
-                    onGoalTitleValueChange = {viewModel.onGoalTitleChanged(it)},
-                    onGoalDueDateValueChange = {viewModel.onGoalDueDateChanged(it)},
-                    onGoalStartAmountValueChanged = {viewModel.onGoalStartAmountChanged(it)}
-                )
-
-
-                BottomActonButton(
-                    isParsed = uiState.isParsed,
-                    onResetClick = { reset()},
-                    enabled = when (selectedOption) {
-                        EntryKind.EXPENSE -> {
-                            !isSaving &&
-                                    uiState.amount.toDoubleOrNull()?.let { it > 0 } == true &&
-                                    uiState.categoryOrType.isNotBlank() &&
-                                    uiState.expenseSubcategory.isNotBlank()
-                        }
-
-                        EntryKind.INCOME -> {
-                            !isSaving &&
-                                    uiState.amount.toDoubleOrNull()?.let { it > 0 } == true &&
-                                    uiState.categoryOrType.isNotBlank()
-                        }
-
-                        EntryKind.GOAL -> {
-                            !isSaving &&
-                                    uiState.amount.toDoubleOrNull()?.let { it > 0 } == true &&
-                                    uiState.categoryOrType.isNotBlank() &&
-                                    uiState.goalTitle.isNotBlank() &&
-                                    uiState.goalDueDate.isNotBlank()
-                        }
-                    },
-                    onSaveButtonClick = {
-                        val path =
-                            uiState.docPath?.takeIf { it.isNotBlank() } ?: return@BottomActonButton
-
-                        val amt = uiState.amount.trim().toDoubleOrNull() ?: run {
-                            // show a toast/snackbar if you want
-                            return@BottomActonButton
-                        }
-
-                        when (selectedOption) {
-                            EntryKind.EXPENSE -> {
-                                viewModel.saveExpense(
-                                    path = path,
-                                    edits = ParsedEntry.Expense(
-                                        amount = amt,
-                                        currency = uiState.currency,
-                                        category = uiState.categoryOrType,
-                                        subcategory = uiState.expenseSubcategory,
-                                        merchant = uiState.expenseMerchant.ifBlank { null },
-                                        dateText = uiState.date,
-                                        notes = uiState.note.ifBlank { null },
-                                    )
-                                )
-                            }
-
-                            EntryKind.INCOME -> {
-                                viewModel.saveIncome(
-                                    path = path,
-                                    edits = ParsedEntry.Income(
-                                        amount = amt,
-                                        currency = uiState.currency,
-                                        type = uiState.categoryOrType,
-                                        dateText = uiState.date,
-                                        notes = uiState.note.ifBlank { null }
-                                    )
-                                )
-                            }
-
-                            EntryKind.GOAL -> {
-                                val stAmt = uiState.goalStartAmount.trim().toDoubleOrNull() ?: 0.0
-                                val title = uiState.goalTitle.ifBlank { return@BottomActonButton }
-
-                                viewModel.saveGoal(
-                                    path = path,
-                                    edits = ParsedEntry.Goal(
-                                        title = title,
-                                        amount = amt,
-                                        currency = uiState.currency,
-                                        type = uiState.categoryOrType,
-                                        dateText = uiState.date,
-                                        notes = uiState.note.ifBlank { null },
-                                        dueDate = uiState.goalDueDate,
-                                        startAmount = stAmt,
-                                    )
-                                )
-                            }
-                        }
-                    }
-                )
             }
-        }
 
-        // Show errors from draft create or parser
-        val submitErr = (submit as? SubmitState.Error)?.message
-        val parseErr = (parse as? ParseState.Error)?.message
-        val err = submitErr ?: parseErr
-        if (!err.isNullOrBlank() && !uiState.isParsed) {
-            Snackbar {
-                Text(text = err)
-            }
+            // Foe one time event (Mostly error)
+            SnackBarMessage(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                snackbarHostState)
+
         }
     }
 }

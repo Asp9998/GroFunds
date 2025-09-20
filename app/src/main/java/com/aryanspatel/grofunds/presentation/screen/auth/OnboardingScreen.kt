@@ -28,7 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.aryanspatel.grofunds.R
-import com.aryanspatel.grofunds.presentation.common.OnboardingPage
+import com.aryanspatel.grofunds.presentation.common.model.OnboardingPage
 import com.aryanspatel.grofunds.presentation.common.navigation.Destinations
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
@@ -152,7 +152,6 @@ fun OnboardingScreen(
     /**
      *     Main UI
      */
-
     Surface(modifier = Modifier
         .background(Color.Transparent)
         .windowInsetsPadding(WindowInsets.statusBars)
