@@ -1,5 +1,6 @@
 package com.aryanspatel.grofunds.presentation.screen.auth
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
+import com.aryanspatel.grofunds.presentation.common.model.UserCredentials
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
@@ -40,46 +41,45 @@ import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
 
 @Composable
 fun LoginScreen(
+    userUiState: UserCredentials,
     uiState: AuthState,
-    onResetState: () -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onResetUiState: () -> Unit,
+    onConsumeMessage: () -> Unit,
     onLoginClick: (email: String, password: String) -> Unit,
     onResetClick: (email: String) -> Unit,
     onDismiss: () -> Unit = {}
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+
+    val email = userUiState.email
+    val password = userUiState.password
+    val enable = email.isNotBlank() && password.isNotBlank()
+
     var showForgotPasswordScreen by remember {mutableStateOf(false)}
 
-    val isFormValid = email.isNotBlank() && password.isNotBlank()
-
     val keyboardController = LocalSoftwareKeyboardController.current
-
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val message = userUiState.message?.asString()
 
-    LaunchedEffect(uiState) {
-        val message = when (uiState) {
-            AuthState.EmailAlreadyExists -> context.getString(R.string.email_already_in_use)
-            AuthState.InvalidCredentials -> context.getString(R.string.invalid_email_password)
-            AuthState.NetworkError -> context.getString(R.string.no_internet_connect)
-            AuthState.NoUserFound -> context.getString(R.string.no_account_found)
-            is AuthState.Error -> uiState.message
-            else -> null
-        }
+    LaunchedEffect(Unit) {
+        onResetUiState() // <-- sets uiState to Idle
+    }
+
+    LaunchedEffect(message) {
+        Log.d("LonINMessage", "LoginScreen: $message")
         if (!message.isNullOrBlank()) {
             snackbarHostState.showSnackbar(
                 message = message,
                 withDismissAction = true,
                 duration = SnackbarDuration.Short
             )
-            onResetState() // sets to Idle
+            onConsumeMessage()
         }
     }
 
-    LaunchedEffect(Unit) {
-        onResetState() // <-- sets uiState to Idle
-    }
+
 
 
     /**
@@ -102,7 +102,7 @@ fun LoginScreen(
 
                 ModernTextField(
                     value = email,
-                    onValueChange = {email = it},
+                    onValueChange = {onEmailChange(it)},
                     label =  stringResource(R.string.auth_email_label),
                     keyboardType = KeyboardType.Email,
                 )
@@ -110,7 +110,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 ModernTextField(value = password,
-                    onValueChange = {password = it},
+                    onValueChange = {onPasswordChange(it)},
                     label = stringResource(R.string.auth_password_label),
                     keyboardType = KeyboardType.Password,
                     isPassword = true
@@ -123,7 +123,7 @@ fun LoginScreen(
                     onClick = {
                         keyboardController?.hide()
                         onLoginClick(email.trim(), password.trim()) },
-                    enabled = isFormValid,
+                    enabled = enable,
                     cornerRadius = 50.dp
                 )
 
@@ -160,8 +160,11 @@ fun LoginScreen(
 
     if(showForgotPasswordScreen){
         ForgotPasswordScreen(
+            userUiState = userUiState,
             uiState = uiState,
-            onResetState = onResetState,
+            onResetUiState = onResetUiState,
+            onEmailChange = {onEmailChange(it)},
+            onConsumeMessageClick = onConsumeMessage,
             onResetClick = {onResetClick(it)}
         ) {
             showForgotPasswordScreen = false

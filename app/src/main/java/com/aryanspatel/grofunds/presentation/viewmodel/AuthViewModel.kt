@@ -2,15 +2,18 @@ package com.aryanspatel.grofunds.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aryanspatel.grofunds.common.DispatcherProvider
+import com.aryanspatel.grofunds.R
+import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.data.remote.UserProfile
-import com.aryanspatel.grofunds.data.repository.AuthRepository
+import com.aryanspatel.grofunds.domain.model.AuthUser
+import com.aryanspatel.grofunds.domain.repository.AuthRepository
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
+import com.aryanspatel.grofunds.presentation.common.model.UiText
+import com.aryanspatel.grofunds.presentation.common.model.UserCredentials
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,8 +33,19 @@ class AuthViewModel @Inject constructor(
     private val dp: DispatcherProvider
 ) : ViewModel() {
 
+
+    private val _userUiState  = MutableStateFlow(UserCredentials())
+
+    val userUiState: StateFlow<UserCredentials> = _userUiState
+
+    private val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")
+    private val passwordRegex = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])[A-Za-z\\d\\p{Punct}]{8,}$")
+
+    private val _uiState = MutableStateFlow<AuthState>(AuthState.Idle)
+    val uiState: StateFlow<AuthState> = _uiState
+
     /** Reactive current Firebase user (null when signed out). */
-    val user: StateFlow<FirebaseUser?> =
+    val user: StateFlow<AuthUser?> =
         authRepository.authState()
             .stateIn(
                 scope = viewModelScope,
@@ -52,8 +67,66 @@ class AuthViewModel @Inject constructor(
                 initialValue = null
             )
 
-    private val _uiState = MutableStateFlow<AuthState>(AuthState.Idle)
-    val uiState: StateFlow<AuthState> = _uiState
+
+
+    init {
+        viewModelScope.launch {
+            _uiState.collect {state ->
+                _userUiState.update{ cur ->
+                    cur.copy(authState = state,
+                        message = state.toUiMessage())
+
+                }
+
+            }
+        }
+    }
+
+    fun onPreferredNameChange(name: String){
+        _userUiState.update { it.copy(name = name) }
+        recomputeFormHintsAndEnabled()
+    }
+
+    fun onPasswordChange(password: String){
+        _userUiState.update { it.copy(password = password) }
+        recomputeFormHintsAndEnabled()
+    }
+
+    fun onEmailChange(email: String){
+        _userUiState.update { it.copy(email = email) }
+        recomputeFormHintsAndEnabled()
+    }
+
+    fun resetUiState(){
+        _userUiState.update { UserCredentials.initial() }
+        _uiState.value = AuthState.Idle
+    }
+
+    private fun recomputeFormHintsAndEnabled() {
+        val s = _userUiState.value
+        val guidance: UiText? = when {
+            s.name.isBlank() && s.password.isBlank() && s.email.isBlank() ->
+                UiText.Resource(R.string.minimum_char)
+            !emailRegex.matches(s.email) ->
+                UiText.Resource(R.string.enter_valid_email)
+            s.password.isBlank() ->
+                UiText.Resource(R.string.password_not_empty)
+            !passwordRegex.matches(s.password) ->
+                UiText.Resource(R.string.password_requirement)
+            else -> null
+        }
+        val enabled = guidance == null
+        _userUiState.update { it.copy(guidance = guidance, enabled = enabled) }
+    }
+
+    /** Call this after the Snackbar is shown so it doesn't re-trigger. */
+    fun consumeMessage() {
+        _userUiState.update { it.copy(message = null) }
+    }
+
+
+    /** -------- Auth State ---------------- */
+
 
     fun signIn(email: String, password: String) = viewModelScope.launch(dp.iO) {
         _uiState.value = AuthState.Loading
@@ -100,7 +173,18 @@ class AuthViewModel @Inject constructor(
         // user/profile flows will emit null automatically
     }
 
-    fun resetState() { _uiState.value = AuthState.Idle }
+    /** ------ Map AuthState → user-facing message (no Context) --------  */
+    fun AuthState.toUiMessage(): UiText? = when (this) {
+        AuthState.Idle -> null
+        AuthState.Loading -> null
+        AuthState.LoggedIn -> null
+        AuthState.PasswordResetEmailSent -> null
+        AuthState.EmailAlreadyExists -> UiText.Resource(R.string.email_already_in_use)
+        AuthState.InvalidCredentials -> UiText.Resource(R.string.invalid_email_password)
+        AuthState.NoUserFound -> UiText.Resource(R.string.no_account_found)
+        AuthState.NetworkError -> UiText.Resource(R.string.no_internet_connect)
+        is AuthState.Error -> UiText.Plain(this.message)
+    }
 }
 
 private fun mapErrorToState(e: Throwable): AuthState = when (e) {
