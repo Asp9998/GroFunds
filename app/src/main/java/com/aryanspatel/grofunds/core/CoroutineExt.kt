@@ -1,4 +1,4 @@
-package com.aryanspatel.grofunds.common
+package com.aryanspatel.grofunds.core
 
 import com.google.android.gms.tasks.Task
 import kotlinx.coroutines.tasks.await

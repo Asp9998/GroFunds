@@ -1,4 +1,4 @@
-package com.aryanspatel.grofunds.common
+package com.aryanspatel.grofunds.core
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

@@ -1,11 +1,12 @@
 package com.aryanspatel.grofunds.data.repository
 
-import com.aryanspatel.grofunds.common.DispatcherProvider
-import com.aryanspatel.grofunds.common.awaitIo
+import com.aryanspatel.grofunds.core.DispatcherProvider
+import com.aryanspatel.grofunds.core.awaitIo
 import com.aryanspatel.grofunds.domain.model.DraftRef
 import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.model.ParseState
 import com.aryanspatel.grofunds.domain.model.ParsedEntry
+import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -37,13 +38,12 @@ import javax.inject.Singleton
  * IMPORTANT: If your CF uses "input" instead of "note", change [INPUT_FIELD] to "input".
  */
 @Singleton
-class AddEntryRepository @Inject constructor(
+class AddEntryTransactionRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
     private val dp: DispatcherProvider
-) {
+): AddEntryRepository {
 
-    /** Change to "input" if your CF expects that key instead of "note". */
     private companion object {
         const val INPUT_FIELD = "input"
     }
@@ -60,13 +60,14 @@ class AddEntryRepository @Inject constructor(
      * Creates a draft that triggers the CF (status = "pending").
      * Returns the created document's [DraftRef] (id + fully-qualified path).
      */
-    suspend fun createDraft(
+    override suspend fun createDraft(
         kind: EntryKind,
         note: String,
-        currencyHint: String? = null,   // optional hints if your CF reads them
-        localeHint: String? = null,
-        timeZone: String? = null
-    ): DraftRef {
+        currencyHint: String?,   // optional hints if your CF reads them
+        localeHint: String?,
+        timeZone: String?
+    ): DraftRef = withContext(dp.iO){
+
         val uid = auth.currentUser?.uid ?: error("Not logged in")
         val col = collectionFor(kind)
         val docRef = db.collection("users").document(uid).collection(col).document()
@@ -78,7 +79,7 @@ class AddEntryRepository @Inject constructor(
             "status" to "pending",
             "createdAt" to FieldValue.serverTimestamp(),
             "updatedAt" to FieldValue.serverTimestamp(),
-            "_client" to mapOf( // nested so CF can ignore if it wants
+            "_client" to mapOf(
                 "currencyHint" to currencyHint,
                 "localeHint" to localeHint,
                 "timeZone" to timeZone
@@ -88,7 +89,7 @@ class AddEntryRepository @Inject constructor(
         withTimeout(15_000) {
             docRef.set(base).awaitIo(dp)
         }
-        return DraftRef(
+        DraftRef(
             id = docRef.id,
             path = "users/$uid/$col/${docRef.id}",
             kind = kind
@@ -105,7 +106,7 @@ class AddEntryRepository @Inject constructor(
      *  - ParseState.Error(message)
      *  - ParseState.Ready(fullData)
      */
-    fun observe(path: String): Flow<ParseState> = callbackFlow {
+    override fun observe(path: String): Flow<ParseState> = callbackFlow {
         val reg = db.document(path).addSnapshotListener { snap, err ->
             if (err != null) {
                 trySend(ParseState.Error(err.message ?: "Listener error"))
@@ -140,7 +141,7 @@ class AddEntryRepository @Inject constructor(
      * - Stores date as a Firebase [com.google.firebase.Timestamp] (parsed from "yyyy-MM-dd").
      * - Sets updatedAt server timestamp.
      */
-    suspend fun saveExpense(path: String, e: ParsedEntry.Expense) {
+    override suspend fun saveExpense(path: String, e: ParsedEntry.Expense) {
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
@@ -171,7 +172,7 @@ class AddEntryRepository @Inject constructor(
         }
     }
 
-    suspend fun saveIncome(path: String, i: ParsedEntry.Income) {
+    override suspend fun saveIncome(path: String, i: ParsedEntry.Income) {
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
@@ -197,7 +198,7 @@ class AddEntryRepository @Inject constructor(
         }
     }
 
-    suspend fun saveGoal(path: String, g: ParsedEntry.Goal) {
+    override suspend fun saveGoal(path: String, g: ParsedEntry.Goal) {
         val ref = db.document(path)
 
         val date: Date = withContext(dp.default) {
@@ -229,15 +230,13 @@ class AddEntryRepository @Inject constructor(
     }
 
 
-
-
     // ─────────────────────────── Delete (ID) ──────────────────────────
 
     /**
      * Deletes draft for path users/{uid}/{collection}/{id}  if not saved.
      */
 
-    suspend fun deleteIfNotSaved(kind: EntryKind, id: String) {
+    override suspend fun deleteIfNotSaved(kind: EntryKind, id: String) {
         val uid = auth.currentUser?.uid ?: error("Not logged in")
         val col = collectionFor(kind)
         val ref = db.collection("users").document(uid).collection(col).document(id)

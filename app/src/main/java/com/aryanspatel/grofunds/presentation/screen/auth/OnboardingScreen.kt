@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -49,6 +50,7 @@ fun AuthScreen(
 
     val user by viewModel.user.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val userUiState by viewModel.userUiState.collectAsStateWithLifecycle()
 
     var showSignUpScreen by remember { mutableStateOf(false) }
     var showLoginScreen by remember { mutableStateOf(false) }
@@ -71,8 +73,13 @@ fun AuthScreen(
 
     if (showSignUpScreen) {
         SignUpScreen(
-            viewModel = viewModel,
+            userUiState = userUiState,
             uiState = uiState,
+            onEmailChange = {viewModel.onEmailChange(it)},
+            onPasswordChange = {viewModel.onPasswordChange(it)},
+            onNameChange = {viewModel.onPreferredNameChange(it)},
+            resetUiState = {viewModel.resetUiState()},
+            onConsumeMessage = {viewModel.consumeMessage()},
             onSighUpClick = {email, password, preferredName ->
                 viewModel.signUp(email, password, preferredName)
             }) {
@@ -82,12 +89,17 @@ fun AuthScreen(
 
     if (showLoginScreen) {
         LoginScreen(
+            userUiState = userUiState,
             uiState = uiState,
-            onResetState = { viewModel.resetState() },
-            onResetClick = {viewModel.resetPassword(it)},
-            onLoginClick = {email, password ->
+            onEmailChange = {viewModel.onEmailChange(it)},
+            onPasswordChange = { viewModel.onPasswordChange(it) },
+            onConsumeMessage = {viewModel.consumeMessage()},
+            onResetUiState = { viewModel.resetUiState() },
+            onResetClick = { viewModel.resetPassword(it) },
+            onLoginClick = { email, password ->
                 viewModel.signIn(email, password)
-            }) {
+            },
+        ) {
             showLoginScreen = false
         }
     }
@@ -198,7 +210,7 @@ fun OnboardingScreen(
 private fun OnboardingPager(
     modifier: Modifier,
     pages: List<OnboardingPage>,
-    pagerState: androidx.compose.foundation.pager.PagerState
+    pagerState: PagerState
 ) {
     val density = LocalDensity.current.density
 
@@ -328,7 +340,8 @@ private fun OnboardingPageContent(
         }
 
         Box(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {

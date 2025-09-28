@@ -2,11 +2,11 @@ package com.aryanspatel.grofunds.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aryanspatel.grofunds.common.DispatcherProvider
-import com.aryanspatel.grofunds.data.repository.AddEntryRepository
+import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.model.ParseState
 import com.aryanspatel.grofunds.domain.model.ParsedEntry
+import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
 import com.aryanspatel.grofunds.presentation.common.model.SaveState
 import com.aryanspatel.grofunds.presentation.common.model.SubmitState
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState

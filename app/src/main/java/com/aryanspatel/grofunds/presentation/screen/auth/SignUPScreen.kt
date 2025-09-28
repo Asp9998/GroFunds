@@ -16,10 +16,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,70 +24,55 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
 import com.aryanspatel.grofunds.presentation.components.ProgressIndicator
-import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
 import androidx.compose.material3.SnackbarHostState
+import com.aryanspatel.grofunds.presentation.common.model.UiText
+import com.aryanspatel.grofunds.presentation.common.model.UserCredentials
 import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
 
 
 @Composable
 fun SignUpScreen(
-    viewModel: AuthViewModel = hiltViewModel(),
     uiState: AuthState,
+    userUiState: UserCredentials,
+    onNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    resetUiState: () -> Unit,
+    onConsumeMessage: () -> Unit,
     onSighUpClick: (email: String, password: String, preferredName: String) -> Unit,
     onDismiss: () -> Unit = {}) {
 
+    // UI STATE
+    val preferredName = userUiState.name
+    val email = userUiState.email
+    val password = userUiState.password
+    val enable = userUiState.enabled
 
-    var preferredName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-
-    val context = LocalContext.current
+    // Local Helper State
     val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState) {
-        val message = when (uiState) {
-            AuthState.EmailAlreadyExists -> context.getString(R.string.email_already_in_use)
-            AuthState.InvalidCredentials -> context.getString(R.string.invalid_email_password)
-            AuthState.NetworkError -> context.getString(R.string.no_internet_connect)
-            AuthState.NoUserFound -> context.getString(R.string.no_account_found)
-            is AuthState.Error -> uiState.message
-            else -> null
-        }
+    val message = userUiState.message?.asString()
+
+    LaunchedEffect(Unit) {
+        resetUiState()
+    }
+
+    LaunchedEffect(message) {
         if (!message.isNullOrBlank()) {
             snackbarHostState.showSnackbar(
                 message = message,
                 withDismissAction = true,
                 duration = SnackbarDuration.Short
             )
-            viewModel.resetState() // sets to Idle
+            onConsumeMessage()
         }
-    }
-
-    val isPreferredNameValid = preferredName.isNotBlank()
-    val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")
-    val passwordRegex = Regex("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])[A-Za-z\\d\\p{Punct}]{8,}$")
-
-
-    val guidance = when {
-        preferredName.isBlank() && password.isBlank() && email.isBlank() -> context.getString(R.string.minimum_char)
-        !emailRegex.matches(email) -> context.getString(R.string.enter_valid_email)
-        password.isBlank() -> context.getString(R.string.password_not_empty)
-        !passwordRegex.matches(password) -> context.getString(R.string.password_requirement)
-        else -> "" // No issues → form is valid
-    }
-
-    val isFormValid = guidance.isEmpty() && isPreferredNameValid
-
-    LaunchedEffect(Unit) {
-        viewModel.resetState() // <-- sets uiState to Idle
     }
 
     /**
@@ -109,7 +91,7 @@ fun SignUpScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 ModernTextField(value = preferredName,
-                    onValueChange = {preferredName = it},
+                    onValueChange = {onNameChange(it)},
                     label = stringResource(R.string.preferred_name)
                 )
 
@@ -117,7 +99,7 @@ fun SignUpScreen(
 
                 ModernTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { onEmailChange(it)},
                     label = stringResource(R.string.auth_email_label),
                     keyboardType = KeyboardType.Email
                 )
@@ -126,7 +108,7 @@ fun SignUpScreen(
 
                 ModernTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = {onPasswordChange(it)},
                     label = stringResource(R.string.auth_password_label),
                     keyboardType = KeyboardType.Password,
                     isPassword = true
@@ -138,7 +120,7 @@ fun SignUpScreen(
                         .padding(5.dp)
                 ) {
                     Text(
-                        text = guidance,
+                        text = userUiState.guidance?.asString() ?: "",
                         style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSecondary)
                     )
                 }
@@ -151,7 +133,7 @@ fun SignUpScreen(
                         onSighUpClick(email.trim(), password.trim(), preferredName.trim())
                         keyboardController?.hide()
                     },
-                    enabled = isFormValid,
+                    enabled = enable,
                     cornerRadius = 50.dp
                 )
 
@@ -181,6 +163,14 @@ fun SignUpScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 snackbarHostState = snackbarHostState)
         }
+    }
+}
+
+@Composable fun UiText.asString(): String {
+    val ctx = LocalContext.current
+    return when (this) {
+        is UiText.Resource -> ctx.getString(resId, *args.toTypedArray())
+        is UiText.Plain -> value
     }
 }
 

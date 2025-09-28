@@ -1,9 +1,11 @@
 package com.aryanspatel.grofunds.data.repository
 
-import com.aryanspatel.grofunds.common.DispatcherProvider
-import com.aryanspatel.grofunds.common.awaitIo
+import com.aryanspatel.grofunds.core.DispatcherProvider
+import com.aryanspatel.grofunds.core.awaitIo
 import com.aryanspatel.grofunds.data.remote.UserProfile
 import com.aryanspatel.grofunds.data.remote.toUserProfile
+import com.aryanspatel.grofunds.domain.repository.AuthRepository
+import com.aryanspatel.grofunds.domain.model.AuthUser
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FieldValue
@@ -11,6 +13,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -19,50 +22,59 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AuthRepository @Inject constructor(
+class FirebaseAuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
     private val dp: DispatcherProvider
-) {
-    fun getCurrentUser(): FirebaseUser? = auth.currentUser
+) : AuthRepository{
 
-    suspend fun signIn(email: String, password: String): Result<FirebaseUser> =
+    private val _auth = MutableStateFlow(auth.currentUser?.toDomain())
+
+    private val authListener = FirebaseAuth.AuthStateListener { fa ->
+        _auth.value = fa.currentUser?.toDomain()
+    }
+
+    override fun authState(): Flow<AuthUser?> = _auth
+
+    init { auth.addAuthStateListener(authListener) }
+    override fun getCurrentUser(): AuthUser? = _auth.value
+
+    override suspend fun signIn(email: String, password: String): Result<AuthUser> =
         runCatching {
             withTimeout(15_000) {
-                auth.signInWithEmailAndPassword(email, password)
-                    .awaitIo(dp)                // IO thread, suspends until done
-                    .user ?: error("No user in AuthResult")
-            }
-        }.mapError()
-
-    suspend fun signUp(email: String, password: String): Result<FirebaseUser> =
-        runCatching {
-            withTimeout(15_000) {
-                auth.createUserWithEmailAndPassword(email, password)
+                val authResult = auth.signInWithEmailAndPassword(email, password)
                     .awaitIo(dp)
-                    .user ?: error("No user in AuthResult")
+                val fbUser: FirebaseUser = authResult.user ?: error("No user in AuthResult")
+                val user = fbUser.toDomain()
+                _auth.value = user
+                user
             }
         }.mapError()
 
-    fun signOut() {
+    override suspend fun signUp(email: String, password: String): Result<AuthUser> =
+        runCatching {
+            withTimeout(15_000) {
+                val authResult =  auth.createUserWithEmailAndPassword(email, password)
+                    .awaitIo(dp)
+                val fbUser: FirebaseUser = authResult.user ?: error("No user in AuthResult")
+                val user = fbUser.toDomain()
+                _auth.value = user
+                user
+
+            }
+        }.mapError()
+
+    override fun signOut() {
         auth.signOut()
     }
 
-    suspend fun sendPasswordResetEmail(email: String): Result<Unit> =
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> =
         runCatching {
             withTimeout(15_000) {
                 auth.sendPasswordResetEmail(email).awaitIo(dp)
                 Unit
             }
         }.mapError()
-
-    /** Reactive auth state for your UI (login/logout). */
-    fun authState(): Flow<FirebaseUser?> = callbackFlow {
-        val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser).isSuccess }
-        auth.addAuthStateListener(listener)
-        awaitClose { auth.removeAuthStateListener(listener) }
-    }
-
 
 
     /**
@@ -73,14 +85,14 @@ class AuthRepository @Inject constructor(
      *
      * Call this right after sign-in / sign-up succeeds.
      */
-    suspend fun upsertUserProfileMinimal(displayNameOverride: String? = null): Result<Unit> =
+    override suspend fun upsertUserProfileMinimal(name: String?): Result<Unit> =
         runCatching {
             val user = auth.currentUser ?: return Result.success(Unit) // nothing to do if signed out
             val uid = user.uid
             val docRef = db.collection("users").document(uid)
 
             // Choose a stable displayName: override > Firebase displayName > email prefix
-            val displayName = displayNameOverride?.takeIf { it.isNotBlank() }
+            val displayName = name?.takeIf { it.isNotBlank() }
                 ?: user.displayName
                 ?: user.email?.substringBefore('@')?.replaceFirstChar { it.titlecase() }
 
@@ -116,7 +128,7 @@ class AuthRepository @Inject constructor(
         }
 
     /** Live updates for a specific UID (useful when auth changes). */
-    fun userProfileFlowFor(uid: String): Flow<UserProfile?> = callbackFlow {
+    override fun userProfileFlowFor(uid: String): Flow<UserProfile?> = callbackFlow {
         val reg = db.collection("users").document(uid)
             .addSnapshotListener { snap, err ->
                 if (err != null) close(err) else trySend(snap?.toUserProfile()).isSuccess
@@ -135,3 +147,9 @@ private fun MutableMap<String, Any?>.pruneNulls(): MutableMap<String, Any?> {
     while (it.hasNext()) if (it.next().value == null) it.remove()
     return this
 }
+
+private fun FirebaseUser.toDomain() = AuthUser(
+    uid = uid,
+    email = email,
+    displayName = displayName
+)
