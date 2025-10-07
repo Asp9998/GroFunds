@@ -71,6 +71,7 @@ fun ForgotPasswordScreen(
     }
 
     HorizontalSlidingOverlay(
+        modifier = Modifier.padding(horizontal = 16.dp),
         title = stringResource(R.string.reset_pass_screen_title),
         onDismiss = {
             onResetUiState()

@@ -1,0 +1,194 @@
+package com.aryanspatel.grofunds.presentation.screen.showTransaction
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.unit.*
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aryanspatel.grofunds.domain.model.EntryKind
+import com.aryanspatel.grofunds.domain.usecase.BuiltInExpenseCategories
+import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
+import com.aryanspatel.grofunds.presentation.common.model.Kind
+import com.aryanspatel.grofunds.presentation.common.model.Transaction
+import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
+import com.aryanspatel.grofunds.presentation.viewmodel.ShowTransactionViewModel
+import java.time.LocalDate
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun ExpenseScreen(
+    viewModel: ShowTransactionViewModel = hiltViewModel()
+) {
+
+    /**
+     *   ViewModel States
+     */
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val categoryTotalList by viewModel.categoryTotalList.collectAsStateWithLifecycle()
+    val currentEditableTransaction by viewModel.currentTransaction.collectAsStateWithLifecycle()
+    val currentYM by viewModel.month.collectAsStateWithLifecycle()
+    val categoryList by viewModel.categoryIds.collectAsStateWithLifecycle()
+    val listOfExpenses = uiState.items
+    val groupedExpenses = listOfExpenses.groupBy { it.date }
+    val totalSpent = uiState.items.sumOf { it.amount }
+    val dailyAvg = viewModel.dailyAverageForMonth(totalSpent, uiState.month)
+    val budget = 1500.0
+
+
+    /**
+     * Helping States
+     */
+    var isShowSummary by remember {mutableStateOf(false)}
+    var isShowEditOverlay by remember { mutableStateOf(false) }
+    var createDuplicate by remember { mutableStateOf(false) }
+
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Transparent),
+        color = Color.Transparent
+    ) {
+        Column(
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .fillMaxSize()
+        ) {
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            TopAppBarSection(
+                headerText = "Expenses",
+                selectedMonth = currentYM,
+                onMonthChange = { viewModel.onMonthChange(it)},
+                isSummaryMode = isShowSummary,
+                onExportDataClick = {},
+                onShowSummaryClick = { isShowSummary = !isShowSummary; viewModel.clearCategories() },
+                onRecurringTransactionClick = {},
+                onInsightsClick = {}
+            )
+
+            InsightHeaderSection(
+                totalSpentOrSaved = totalSpent,
+                dailyAvg = dailyAvg,
+                budget = budget,
+                backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest
+            )
+
+            FiltersSection(
+                categories = BuiltInExpenseCategories ,
+                selectedCategories = categoryList.toList(),
+                onCategoryChanged = {viewModel.toggleCategory(id = it)},
+                onClearCategory = {viewModel.clearCategories()}
+            )
+
+            LazyColumn(
+                state = rememberLazyListState(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if(uiState.loading){
+                    item {
+                        Box(modifier = Modifier.fillMaxSize())
+                    }
+                }
+                else if (groupedExpenses.isEmpty()) {
+                    item {
+                        EmptyState(onAddTransactionClick = {})
+                    }
+                } else {
+                    groupedExpenses.forEach { (date, dateExpenses) ->
+                        stickyHeader {
+                            DateHeader(date = date, total = dateExpenses.sumOf { it.amount })
+                        }
+
+                        items(dateExpenses, key = { it.id }) { expense ->
+                            TransactionCard(
+                                modifier = Modifier.animateItem(),
+                                amount = expense.amount,
+                                categoryOrType = expense.categoryOrType,
+                                subcategory = expense.subcategory,
+                                merchant = expense.merchant,
+                                note = expense.note,
+                                isExpenseOverlay = true,
+                                isExcluded = false,
+                                onEdit = {
+                                    viewModel.setCurrTransaction(expense)
+                                    isShowEditOverlay = true },
+                                onDuplicate = {
+                                    viewModel.setCurrTransaction(expense)
+                                    createDuplicate = true; isShowEditOverlay = true},
+                                onExcludeFromReport = {},
+                                onDeleteTransaction = {}
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(
+                        modifier = Modifier
+                            .height(10.dp)
+                            .windowInsetsPadding(WindowInsets.navigationBars)
+                    )
+                }
+            }
+        }
+    }
+
+    if(isShowSummary){
+        HorizontalSlidingOverlay(
+            isFullScreen = true,
+            title = "Expenses Summary",
+            onDismiss = { isShowSummary = false },
+        ) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                ExpenseDonutChart(
+                    categoryTotalList = categoryTotalList,
+                    grandTotal = totalSpent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    holeRatio = 0.62f,
+                    minPctForLabel = 3f,
+                )
+
+                CategorySummaryList(categories = categoryTotalList)
+            }
+        }
+    }
+
+    if(isShowEditOverlay){
+        EditDuplicateTransaction(
+            transaction = AddEntryUiState(
+                kind = EntryKind.EXPENSE,
+                amount = currentEditableTransaction.amount.toString() ,
+                categoryOrType = currentEditableTransaction.categoryOrType,
+                currency = currentEditableTransaction.currency,
+                date = currentEditableTransaction.date,
+                note = currentEditableTransaction.note ?: "",
+                expenseSubcategory = currentEditableTransaction.subcategory ?: "",
+                expenseMerchant = currentEditableTransaction.merchant ?: "",
+                isParsed = true,
+            ),
+            viewModel = viewModel,
+            screenTitle = if(createDuplicate) "Duplicate Expense" else "Edit Expense",
+            transactionKind = EntryKind.EXPENSE,
+            createDuplicate = createDuplicate,
+            onDismiss = { isShowEditOverlay = false; createDuplicate = false}
+        )
+    }
+}

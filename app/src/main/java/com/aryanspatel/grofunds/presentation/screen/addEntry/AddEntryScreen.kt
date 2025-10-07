@@ -29,16 +29,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.domain.model.EntryKind
-import com.aryanspatel.grofunds.presentation.common.model.CURRENCY_LIST_ENUM
-import com.aryanspatel.grofunds.presentation.common.model.EXPENSE_CATEGORY_ENUM
-import com.aryanspatel.grofunds.presentation.common.model.GOAL_TYPE_ENUM
-import com.aryanspatel.grofunds.presentation.common.model.INCOME_TYPE_ENUM
+import com.aryanspatel.grofunds.domain.usecase.CURRENCY_LIST_ENUM
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
-import com.aryanspatel.grofunds.presentation.common.model.subcategoriesFor
+import com.aryanspatel.grofunds.domain.usecase.BuiltInExpenseCategories
+import com.aryanspatel.grofunds.domain.usecase.BuiltInIncomeTypes
+import com.aryanspatel.grofunds.domain.usecase.BuiltInSavingTypes
+import com.aryanspatel.grofunds.domain.usecase.subcategoriesFor
 import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.DatePickerField
 import com.aryanspatel.grofunds.presentation.viewmodel.AddEntryViewModel
@@ -129,6 +129,7 @@ fun AddExpenseScreen(
      */
 
     HorizontalSlidingOverlay(
+        modifier = Modifier.padding(horizontal = 16.dp),
         title = "Add Entry",
         onDismiss = {
             scope.launch {
@@ -153,6 +154,7 @@ fun AddExpenseScreen(
 
                 // NoteInputSection
                 NoteInputSection(
+
                     selectedOption = selectedOption,
                     inputNote = uiState.inputNote,
                     isLoading = isLoading,
@@ -249,39 +251,40 @@ fun SummaryCard(
                 MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
             )
-        )
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Surface(shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        ),
+        content = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Receipt,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .size(24.dp)
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text("$amount $currency",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold)
-                Text(
-                    "$category${if (merchant.isNotEmpty()) " • $merchant" else ""}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondary
-                )
-                Text(date, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondary.copy(0.8f))
+                Surface(shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Receipt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .size(24.dp)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("$amount $currency",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold)
+                    Text(
+                        "$category${if (merchant.isNotEmpty()) " • $merchant" else ""}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondary
+                    )
+                    Text(date, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondary.copy(0.8f))
+                }
             }
         }
-    }
+    )
 }
 
 
@@ -399,9 +402,9 @@ fun EditableDetailsSection(
                         if (state.expenseSubcategory !in subcategoriesFor(state.categoryOrType)) onExpenseSubcategoryValueChanged(curr)
                     },
                     options = when (selectedOption) {
-                        EntryKind.EXPENSE -> EXPENSE_CATEGORY_ENUM
-                        EntryKind.INCOME -> INCOME_TYPE_ENUM
-                        else -> GOAL_TYPE_ENUM
+                        EntryKind.EXPENSE -> BuiltInExpenseCategories.map { it.name }
+                        EntryKind.INCOME -> BuiltInIncomeTypes.map { it.name }
+                        else -> BuiltInSavingTypes.map { it.name }
                     }
                 )
 
@@ -497,12 +500,9 @@ fun NoteInputSection(selectedOption: EntryKind,
         gradient = Brush.linearGradient(
             listOf(
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-            )
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
         )
-    ) {
-
-
+    ){
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -518,7 +518,7 @@ fun NoteInputSection(selectedOption: EntryKind,
                     EntryKind.EXPENSE -> stringResource(R.string.add_expense_title)
                     EntryKind.INCOME -> stringResource(R.string.add_income_title)
                     EntryKind.GOAL -> stringResource(R.string.add_goal_title)
-                },
+                                             },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -535,10 +535,9 @@ fun NoteInputSection(selectedOption: EntryKind,
                 placeholder = when (selectedOption) {
                     EntryKind.EXPENSE -> stringResource(R.string.add_expense_example)
                     EntryKind.INCOME -> stringResource(R.string.add_income_example)
-                    EntryKind.GOAL -> stringResource(R.string.add_goal_example)
-                },
+                    EntryKind.GOAL -> stringResource(R.string.add_goal_example) },
                 minLines = 3,
-                maxLines = 6,
+                maxLines = 6
             )
 
             // Parse Button
@@ -563,7 +562,6 @@ fun NoteInputSection(selectedOption: EntryKind,
         }
     }
 }
-
 
 
 

@@ -1,5 +1,6 @@
 package com.aryanspatel.grofunds.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.core.DispatcherProvider
@@ -7,9 +8,12 @@ import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.model.ParseState
 import com.aryanspatel.grofunds.domain.model.ParsedEntry
 import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
+import com.aryanspatel.grofunds.domain.usecase.DateConverters
+import com.aryanspatel.grofunds.domain.usecase.DateConverters.normalizeDateStrict
 import com.aryanspatel.grofunds.presentation.common.model.SaveState
 import com.aryanspatel.grofunds.presentation.common.model.SubmitState
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
+import com.aryanspatel.grofunds.domain.usecase.subcategoriesFor
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -25,6 +29,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
@@ -60,7 +65,7 @@ class AddEntryViewModel @Inject constructor(
     val canSave: StateFlow<Boolean> =
         combine(uiState, saveState) { ui, save ->
             val isSaving = save is SaveState.Saving
-            val amountOk = ui.amount.trim().toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true
+            val amountOk = ui.amount.trim().toBigDecimalOrNull()?.let { it > BigDecimal.ZERO } == true
 
             val fieldsOk = when (ui.kind) {
                 EntryKind.EXPENSE -> amountOk && ui.categoryOrType.isNotBlank() && ui.expenseSubcategory.isNotBlank()
@@ -88,6 +93,7 @@ class AddEntryViewModel @Inject constructor(
             .onEach { state ->
                 when (state) {
                     is SubmitState.Success -> {
+                        Log.d("ObservePath", "path: ${state.draft.path}, id: ${state.draft.id}, kind: ${state.draft.kind}")
                         onDraftIdChanged(state.draft.id)
                         onDocPathChanged(state.draft.path)
                         start(state.draft.path)
@@ -133,6 +139,7 @@ class AddEntryViewModel @Inject constructor(
                 when (state){
                     is SaveState.Success -> {
                         resetScreen(_uiState.value.kind)
+                        _events.tryEmit("Transaction has been saved successfully.")
                     }
                     is SaveState.Error -> {
                         val msg = state.message
@@ -165,14 +172,17 @@ class AddEntryViewModel @Inject constructor(
 
     fun onSaveButtonClick(){
         val uiState = _uiState.value
-        val path = _uiState.value.docPath?.takeIf { it.isNotBlank() } ?: return
+        val id = _uiState.value.draftId?.takeIf { it.isNotBlank() } ?: return
+//        val path = _uiState.value.docPath?.takeIf { it.isNotBlank() } ?: return
         val amt = _uiState.value.amount.trim().toDoubleOrNull() ?: run { return }
 
         when (uiState.kind) {
             EntryKind.EXPENSE -> {
                 saveExpense(
-                    path = path,
+                    id = id,
                     edits = ParsedEntry.Expense(
+                        input = uiState.inputNote,
+                        kind = uiState.kind.name,
                         amount = amt,
                         currency = uiState.currency,
                         category = uiState.categoryOrType,
@@ -186,8 +196,10 @@ class AddEntryViewModel @Inject constructor(
 
             EntryKind.INCOME -> {
                 saveIncome(
-                    path = path,
+                    id = id,
                     edits = ParsedEntry.Income(
+                        input = uiState.inputNote,
+                        kind = uiState.kind.name,
                         amount = amt,
                         currency = uiState.currency,
                         type = uiState.categoryOrType,
@@ -202,8 +214,9 @@ class AddEntryViewModel @Inject constructor(
                 val title = uiState.goalTitle.ifBlank { return }
 
                 saveGoal(
-                    path = path,
+                    id = id,
                     edits = ParsedEntry.Goal(
+                        input = uiState.inputNote,
                         title = title,
                         amount = amt,
                         currency = uiState.currency,
@@ -230,7 +243,14 @@ class AddEntryViewModel @Inject constructor(
     fun onAmountChanged(v: String)            = _uiState.update { it.copy(amount = v) }
     fun onCurrencyChanged(v: String)          = _uiState.update { it.copy(currency = v) }
     fun onDateChanged(v: String)              = _uiState.update { it.copy(date = v) }
-    fun onCategoryOrTypeChanged(v: String)    = _uiState.update { it.copy(categoryOrType = v) }
+    fun onCategoryOrTypeChanged(v: String){
+        _uiState.update { it.copy(categoryOrType = v) }
+            // also changing the subCategory according to new category
+        if(_uiState.value.kind == EntryKind.EXPENSE) {
+            onExpenseSubChanged(subcategoriesFor(v)[0])
+        }
+    }
+
     fun onExpenseSubChanged(v: String)        = _uiState.update { it.copy(expenseSubcategory = v) }
     fun onExpenseMerchantChanged(v: String)   = _uiState.update { it.copy(expenseMerchant = v) }
     fun onGoalTitleChanged(v: String)         = _uiState.update { it.copy(goalTitle = v) }
@@ -379,29 +399,29 @@ class AddEntryViewModel @Inject constructor(
 
 
     /** ───────────────────────── Save Entry  ───────────────────────── */
-    private fun saveExpense(path: String, edits: ParsedEntry.Expense) {
+    private fun saveExpense(id: String, edits: ParsedEntry.Expense) {
         _saveState.value = SaveState.Saving
         viewModelScope.launch(dp.iO) {
-            runCatching { repo.saveExpense(path, edits) }
-                .onSuccess { _saveState.value = SaveState.Success(path) }
+            runCatching { repo.saveExpense(id, edits) }
+                .onSuccess { _saveState.value = SaveState.Success(id) }
                 .onFailure { t -> _saveState.value = SaveState.Error(t.message ?: "Failed to save") }
         }
     }
 
-    private fun saveIncome(path: String, edits: ParsedEntry.Income) {
+    private fun saveIncome(id: String, edits: ParsedEntry.Income) {
         _saveState.value = SaveState.Saving
         viewModelScope.launch(dp.iO) {
-            runCatching { repo.saveIncome(path, edits) }
-                .onSuccess { _saveState.value = SaveState.Success(path) }
+            runCatching { repo.saveIncome(id, edits) }
+                .onSuccess { _saveState.value = SaveState.Success(id) }
                 .onFailure { t -> _saveState.value = SaveState.Error(t.message ?: "Failed to save") }
         }
     }
 
-    private fun saveGoal(path: String, edits: ParsedEntry.Goal) {
+    private fun saveGoal(id: String, edits: ParsedEntry.Goal) {
         _saveState.value = SaveState.Saving
         viewModelScope.launch(dp.iO) {
-            runCatching { repo.saveGoal(path, edits) }
-                .onSuccess { _saveState.value = SaveState.Success(path) }
+            runCatching { repo.saveGoal(id, edits) }
+                .onSuccess { _saveState.value = SaveState.Success(id) }
                 .onFailure { t -> _saveState.value = SaveState.Error(t.message ?: "Failed to save") }
         }
     }
@@ -428,6 +448,8 @@ class AddEntryViewModel @Inject constructor(
 /** ───────────────────────── Map UI State  ───────────────────────── */
 
 private data class KeyMap(
+    val input: List<String> = emptyList(),
+    val kind: List<String> = emptyList(),
     val amount: List<String> = emptyList(),
     val currency: List<String> = listOf("currency", "currencyCode"),
     val category: List<String> = emptyList(),
@@ -458,23 +480,12 @@ private fun mapToParsedEntry(
         }
     }
 
-    fun firstTimestamp(vararg keys: String): Timestamp? =
-        keys.firstNotNullOfOrNull { k -> (doc[k] ?: result[k]) as? Timestamp }
-
-    val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val inputPatterns = listOf("yyyy-MM-dd", "yyyy/MM/dd", "MMM d, yyyy", "d MMM yyyy")
-
-    fun normalizeDate(keys: List<String>): String? {
-        val ts = firstTimestamp(*keys.toTypedArray())
-        if (ts != null) return dateFmt.format(ts.toDate())
-        val s = firstString(*keys.toTypedArray()) ?: return null
-        return inputPatterns.firstNotNullOfOrNull { pat ->
-            runCatching { dateFmt.format(SimpleDateFormat(pat, Locale.getDefault()).parse(s)!!) }.getOrNull()
-        }
-    }
+    val label = normalizeDateStrict(doc, result, "updatedAt", "createdAt", "date")
 
     val km = when (kind) {
         EntryKind.EXPENSE -> KeyMap(
+            input    = listOf("input", "inputNote"),
+            kind     = listOf("kind"),
             amount   = listOf("amount", "total", "value"),
             currency = listOf("currency", "currencyCode"),
             category = listOf("category", "categoryOrType", "mainCategory"),
@@ -484,6 +495,8 @@ private fun mapToParsedEntry(
             notes    = listOf("notes", "memo", "description")
         )
         EntryKind.INCOME -> KeyMap(
+            input    = listOf("input", "inputNote"),
+            kind     = listOf("kind"),
             amount   = listOf("amount", "income", "total", "value"),
             currency = listOf("currency", "currencyCode"),
             category = listOf("category", "type", "incomeType"),
@@ -492,6 +505,7 @@ private fun mapToParsedEntry(
             notes    = listOf("notes", "memo", "description")
         )
         EntryKind.GOAL -> KeyMap(
+            input    = listOf("input", "inputNote"),
             // For goals, "amount" means target; current/progress goes in extras
             amount   = listOf("target", "targetAmount", "goalAmount", "amount"),
             currency = listOf("currency", "currencyCode"),
@@ -508,35 +522,42 @@ private fun mapToParsedEntry(
 
     return when (kind) {
         EntryKind.EXPENSE -> ParsedEntry.Expense(
+            input = firstString(*km.input.toTypedArray()),
+            kind = firstString(*km.kind.toTypedArray()),
             amount = firstNumber(*km.amount.toTypedArray()),
             currency = up(firstString(*km.currency.toTypedArray())),
             category = firstString(*km.category.toTypedArray()),
             subcategory = firstString(*km.subcategory.toTypedArray()),
             merchant = firstString(*km.party.toTypedArray()),
-            dateText = normalizeDate(km.date),
+//            dateText = normalizeDate(km.date),
+            dateText = label,
             notes = firstString(*km.notes.toTypedArray()),
             confidence = firstNumber(*km.confidence.toTypedArray())
         )
 
         EntryKind.INCOME -> ParsedEntry.Income(
+            input = firstString(*km.input.toTypedArray()),
+            kind = firstString(*km.kind.toTypedArray()),
             amount     = firstNumber(*km.amount.toTypedArray()),
             currency   = up(firstString(*km.currency.toTypedArray())),
             type   = firstString(*km.category.toTypedArray()),
-            dateText   = normalizeDate(km.date),
+//            dateText   = normalizeDate(km.date),
+            dateText   = label,
             notes      = firstString(*km.notes.toTypedArray()),
             confidence = firstNumber(*km.confidence.toTypedArray())
         )
 
         EntryKind.GOAL -> ParsedEntry.Goal(
+            input = firstString(*km.input.toTypedArray()),
             title = firstString(*(km.extras["name"] ?: emptyList()).toTypedArray()),
             amount = firstNumber(*km.amount.toTypedArray()),
             startAmount = firstNumber(*(km.extras["currentAmount"] ?: emptyList()).toTypedArray()),
             currency = up(firstString(*km.currency.toTypedArray())),
-            dueDate = normalizeDate(km.date),
+            dueDate = label,
             notes = firstString(*km.notes.toTypedArray()),
             confidence = firstNumber(*km.confidence.toTypedArray()),
             type = firstString(),
-            dateText  = normalizeDate(km.date),
+            dateText  = label,
         )
     }
 }

@@ -80,6 +80,7 @@ fun SignUpScreen(
      */
 
     HorizontalSlidingOverlay(
+        modifier = Modifier.padding(horizontal = 16.dp),
         title = "Sign up",
         onDismiss = onDismiss,
     ) {

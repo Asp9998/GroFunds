@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.core.DispatcherProvider
-import com.aryanspatel.grofunds.data.remote.UserProfile
+import com.aryanspatel.grofunds.data.model.UserProfile
 import com.aryanspatel.grofunds.domain.model.AuthUser
 import com.aryanspatel.grofunds.domain.repository.AuthRepository
 import com.aryanspatel.grofunds.presentation.common.model.AuthState

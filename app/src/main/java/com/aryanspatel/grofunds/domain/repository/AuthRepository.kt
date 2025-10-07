@@ -1,6 +1,6 @@
 package com.aryanspatel.grofunds.domain.repository
 
-import com.aryanspatel.grofunds.data.remote.UserProfile
+import com.aryanspatel.grofunds.data.model.UserProfile
 import com.aryanspatel.grofunds.domain.model.AuthUser
 import kotlinx.coroutines.flow.Flow
 

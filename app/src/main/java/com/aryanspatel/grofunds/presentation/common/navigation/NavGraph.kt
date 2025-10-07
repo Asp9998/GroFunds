@@ -2,18 +2,23 @@ package com.aryanspatel.grofunds.presentation.common.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.aryanspatel.grofunds.presentation.screen.auth.AuthScreen
-import com.aryanspatel.grofunds.presentation.screen.expense.ExpenseScreen
+import com.aryanspatel.grofunds.presentation.screen.showTransaction.ExpenseScreen
 import com.aryanspatel.grofunds.presentation.screen.home.HomeScreen
-import com.aryanspatel.grofunds.presentation.screen.income.IncomeScreen
+import com.aryanspatel.grofunds.presentation.screen.showTransaction.IncomeScreen
 import com.aryanspatel.grofunds.presentation.screen.profile.ProfileScreen
 import com.aryanspatel.grofunds.presentation.screen.savings.SavingScreen
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
+import com.aryanspatel.grofunds.presentation.viewmodel.HomeScreenViewModel
+import com.aryanspatel.grofunds.presentation.viewmodel.ShowTransactionViewModel
 
 @Composable
 fun NavGraph(
@@ -49,10 +54,10 @@ fun NavGraph(
 
         // Home Screen (after login)
         composable(route = Destinations.HomeScreen.name) {
-            // Pass navController for navigation within Home
-            // Add onLogout callback to sign out user and return to AuthScreen
+            val vm = hiltViewModel<HomeScreenViewModel>()
             HomeScreen(
                 navController = navController,
+                viewModel = vm,
                 onLogout = {
                     authViewModel.signOut() // Clear Firebase session
                     navController.navigate(Destinations.AuthScreen.name) {
@@ -69,13 +74,30 @@ fun NavGraph(
         }
 
         // Expense Screen
-        composable(route = Destinations.ExpenseScreen.name) {
-            ExpenseScreen()
+        composable(
+            route = Destinations.ExpenseScreen.name,
+            arguments = listOf(
+                navArgument("kind"){
+                    type = NavType.StringType
+                    defaultValue = "expense"
+                }
+            )
+        ) { backStackEntry ->
+            val vm = hiltViewModel<ShowTransactionViewModel>(backStackEntry)
+            ExpenseScreen(viewModel = vm)
         }
 
         // Income Screen
-        composable(route = Destinations.IncomeScreen.name) {
-            IncomeScreen()
+        composable(route = Destinations.IncomeScreen.name,
+            arguments = listOf(
+                navArgument("kind"){
+                    type = NavType.StringType
+                    defaultValue = "income"
+                }
+            )
+        ) { backStackEntry ->
+            val vm = hiltViewModel<ShowTransactionViewModel>(backStackEntry)
+            IncomeScreen(viewModel = vm)
         }
 
         // Saving Screen

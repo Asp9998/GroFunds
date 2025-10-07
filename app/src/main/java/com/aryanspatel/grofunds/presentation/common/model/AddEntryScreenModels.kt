@@ -2,6 +2,9 @@ package com.aryanspatel.grofunds.presentation.common.model
 
 import com.aryanspatel.grofunds.domain.model.DraftRef
 import com.aryanspatel.grofunds.domain.model.EntryKind
+import com.aryanspatel.grofunds.domain.usecase.DateConverters
+import java.time.LocalDate
+import java.time.ZoneId
 
 data class AddEntryUiState(
     val kind: EntryKind = EntryKind.EXPENSE,
@@ -11,7 +14,7 @@ data class AddEntryUiState(
     val amount: String = "",
     val categoryOrType: String = "",
     val currency: String = "CAD",
-    val date: String = "Today",
+    val date: String = "",
     val note: String = "",
 
     // expense State only
@@ -32,7 +35,16 @@ data class AddEntryUiState(
 
 ) {
     companion object {
-        fun initial(kind: EntryKind) = AddEntryUiState(kind = kind)
+        fun initial(kind: EntryKind) : AddEntryUiState {
+            val today = LocalDate.now(ZoneId.systemDefault())
+            val dateStr = DateConverters.formatUiDate(today)
+
+            return AddEntryUiState(
+                kind = kind,
+                date = dateStr,
+                goalDueDate = dateStr
+            )
+        }
     }
 }
 
@@ -52,6 +64,6 @@ sealed interface SubmitState {
 sealed interface SaveState {
     data object Idle : SaveState
     data object Saving : SaveState
-    data class Success(val path: String) : SaveState
+    data class Success(val id: String) : SaveState
     data class Error(val message: String) : SaveState
 }
