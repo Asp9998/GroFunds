@@ -1,5 +1,7 @@
 package com.aryanspatel.grofunds.domain.model
 
+import androidx.compose.ui.graphics.Color
+
 
 enum class EntryKind {
     EXPENSE,
@@ -24,6 +26,8 @@ sealed interface ParseState {
 
 sealed class ParsedEntry {
     data class Expense(
+        val kind: String?,
+        val input: String?,
         val amount: Double?,
         val currency: String?,
         val category: String?,
@@ -35,6 +39,8 @@ sealed class ParsedEntry {
     ) : ParsedEntry()
 
     data class Income(
+        val kind: String?,
+        val input: String?,
         val amount: Double?,
         val currency: String?,
         val type: String?,
@@ -44,6 +50,7 @@ sealed class ParsedEntry {
     ) : ParsedEntry()
 
     data class Goal(
+        val input: String?,
         val title: String?,
         val type: String?,
         val amount: Double?,
@@ -55,3 +62,19 @@ sealed class ParsedEntry {
         val confidence: Double? = null
     ) : ParsedEntry()
 }
+
+data class CategoryResolution(
+    val categoryId: String,
+    val subcategoryId: String? = null,
+)
+
+/**
+ *  category seed for category id - ids get stored in database, not labels
+ */
+data class CategorySeed(
+    val id: String,
+    val name: String,            // display (en-CA default)
+    val parentId: String? = null,
+    val iconRes: Int? = null,
+    val color: Color? = null
+)

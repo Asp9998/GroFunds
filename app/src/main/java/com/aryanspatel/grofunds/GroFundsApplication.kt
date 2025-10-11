@@ -1,16 +1,26 @@
 package com.aryanspatel.grofunds
 
 import android.app.Application
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.StrictMode
+import androidx.startup.Initializer
+import com.aryanspatel.grofunds.data.sync.SyncBootstrapper
 import com.google.firebase.FirebaseApp
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Inject
 
 
 @HiltAndroidApp
 class GroFundsApplication: Application() {
+    @Inject lateinit var syncBootstrapper: SyncBootstrapper
     override fun onCreate() {
         super.onCreate()
+        syncBootstrapper.start()   // Work Manager initialization for background sync
 
         // Firebase Initializing
         FirebaseApp.initializeApp(this)
@@ -18,7 +28,6 @@ class GroFundsApplication: Application() {
         if (isAppDebuggable()) enableStrictMode()
 
     }
-
 
     /**
      * Returns true if the installed app is marked as debuggable.

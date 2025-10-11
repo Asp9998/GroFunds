@@ -17,10 +17,10 @@ interface AddEntryRepository {
 
     fun observe(path: String) : Flow<ParseState>
 
-    suspend fun saveExpense(path:String, e: ParsedEntry.Expense)
+    suspend fun saveExpense(id:String, e: ParsedEntry.Expense)
 
-    suspend fun saveIncome(path:String, i: ParsedEntry.Income)
-    suspend fun saveGoal(path:String, g:ParsedEntry.Goal)
+    suspend fun saveIncome(id:String, i: ParsedEntry.Income)
+    suspend fun saveGoal(id:String, g:ParsedEntry.Goal)
 
     suspend fun deleteIfNotSaved(kind: EntryKind, id: String)
 

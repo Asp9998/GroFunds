@@ -78,8 +78,8 @@
     <string name="note_label">Additional Note (Optional)</string>
 
 <!--    Action Button Section-->
-    <string name="entry_screen_reset_button_text">Reset</string>
-    <string name="entry_screen_save_button_text">save</string>
+    <string name="entry_screen_cancel_button_text">Cancel</string>
+    <string name="entry_screen_save_button_text">Save</string>
 
 
 

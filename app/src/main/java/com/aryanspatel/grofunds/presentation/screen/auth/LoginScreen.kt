@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -86,7 +87,10 @@ fun LoginScreen(
      *     Main UI with - email , password and action button and forgot password option.
      */
 
-    HorizontalSlidingOverlay(title = "", onDismiss = onDismiss) {
+    HorizontalSlidingOverlay(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        title = "",
+        onDismiss = onDismiss) {
 
         Box(Modifier.fillMaxSize()) {
 

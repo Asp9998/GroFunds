@@ -15,6 +15,8 @@ private val DarkColorScheme = darkColorScheme(
 
     primary = ThemeColor.Night.primary,                      // Main brand color
     secondary = ThemeColor.Night.secondary,                  // second brand color
+    tertiary = ThemeColor.Night.final,
+
     onPrimary = ThemeColor.Night.primaryText,                // Text on primary buttons
 
     onSecondary = ThemeColor.Night.descriptionText,         // Text/icons on secondary
@@ -25,7 +27,7 @@ private val DarkColorScheme = darkColorScheme(
     surface = ThemeColor.Night.surface,                     // Card, surfaces
 //    onSurface = ThemeColor.Day.titleText,                 // Text/icons on surface
 //
-//    surfaceVariant = ThemeColor.Day.surfaceVariant,       // Alternative surface (chips, etc.)
+    surfaceVariant = ThemeColor.Night.surfaceVariant,       // Alternative surface (chips, etc.)
 //    onSurfaceVariant = ThemeColor.Day.bodyText,
 
     error = ThemeColor.Night.error,
@@ -33,14 +35,21 @@ private val DarkColorScheme = darkColorScheme(
     primaryContainer = ThemeColor.Night.floatingActionButton,
     secondaryContainer = ThemeColor.Night.alternativeCardColor,
 
+    surfaceContainerLow = ThemeColor.Night.incomeScreenCont,
+    surfaceContainerLowest = ThemeColor.Night.expenseScreenCont,
+    surfaceContainerHigh = ThemeColor.Night.savingsScreenCont,
+
+    surfaceContainer = ThemeColor.Night.menuOptionsBackground
+
 )
 
 private val LightColorScheme = lightColorScheme(
 
     primary = ThemeColor.Day.primary,                      // Main brand color
     secondary = ThemeColor.Day.secondary,                  // secondary brand color
-    onPrimary = ThemeColor.Day.primaryText,                  // Text on primary buttons
+    tertiary = ThemeColor.Day.final,
 
+    onPrimary = ThemeColor.Day.primaryText,                  // Text on primary buttons
     onSecondary = ThemeColor.Day.descriptionText,           // Text/icons on secondary
 //
 //    tertiary = ThemeColor.Day.selectedIcon,               // Accent (e.g. selected icon)
@@ -49,14 +58,22 @@ private val LightColorScheme = lightColorScheme(
     background = ThemeColor.Day.background,               // App background
 //    onBackground = ThemeColor.Day.titleText,              // Text on background
 //
-    surface = ThemeColor.Day.surface,                     // Card, surfaces
-//    onSurface = ThemeColor.Day.titleText,                 // Text/icons on surface
-//
-//    surfaceVariant = ThemeColor.Day.surfaceVariant,       // Alternative surface (chips, etc.)
-//    onSurfaceVariant = ThemeColor.Day.bodyText,
-//
+    surface = ThemeColor.Day.surface,
+    surfaceVariant = ThemeColor.Day.surfaceVariant,
+
     primaryContainer = ThemeColor.Day.floatingActionButton,
     secondaryContainer = ThemeColor.Day.alternativeCardColor,
+
+    surfaceContainerLow = ThemeColor.Day.incomeScreenCont,
+    surfaceContainerLowest = ThemeColor.Day.expenseScreenCont,
+    surfaceContainerHigh = ThemeColor.Day.savingsScreenCont,
+    surfaceContainer = ThemeColor.Day.menuOptionsBackground,
+
+
+
+
+
+
 //    secondaryContainer = ThemeColor.Day.goalCardChild,    // Goal card sub-items
 //    tertiaryContainer = ThemeColor.Day.arcBackground,     // Progress arcs
 //

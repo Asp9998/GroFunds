@@ -1,6 +1,6 @@
 package com.aryanspatel.grofunds.fakeRepo.repository
 
-import com.aryanspatel.grofunds.data.remote.UserProfile
+import com.aryanspatel.grofunds.data.remote.model.UserProfile
 import com.aryanspatel.grofunds.domain.model.AuthUser
 import com.aryanspatel.grofunds.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow

@@ -2,8 +2,14 @@ package com.aryanspatel.grofunds.di
 
 import com.aryanspatel.grofunds.data.repository.AddEntryTransactionRepository
 import com.aryanspatel.grofunds.data.repository.FirebaseAuthRepository
+import com.aryanspatel.grofunds.data.remote.model.FirebaseCurrentUserProvider
+import com.aryanspatel.grofunds.data.sync.FirebaseSessionStore
+import com.aryanspatel.grofunds.data.sync.SessionStore
+import com.aryanspatel.grofunds.data.work.WorkManagerSyncOrchestrator
+import com.aryanspatel.grofunds.domain.port.SyncOrchestrator
 import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
 import com.aryanspatel.grofunds.domain.repository.AuthRepository
+import com.aryanspatel.grofunds.domain.repository.CurrentUserProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -29,4 +35,30 @@ interface AddEntryRepoModule{
         impl: AddEntryTransactionRepository
     ): AddEntryRepository
 }
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class SyncModule {
+    @Binds
+    abstract fun bindScheduler(impl: WorkManagerSyncOrchestrator) : SyncOrchestrator
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class UserProviderModule {
+    @Binds
+    @Singleton
+    abstract fun bindCurrentUserProvider(
+        impl: FirebaseCurrentUserProvider
+    ): CurrentUserProvider
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class SessionModule {
+    @Binds
+    @Singleton
+    abstract fun bindSessionStore(impl: FirebaseSessionStore): SessionStore
+}
+
 

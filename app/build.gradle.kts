@@ -76,6 +76,8 @@ dependencies {
     implementation(libs.ui.graphics)
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.foundation.layout)
+    implementation(libs.androidx.appcompat.resources)
+    implementation(libs.androidx.lifecycle.process)
 
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
@@ -114,6 +116,11 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.storage)
 
+    // Room
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
+
     // Retrofit/ OKHttp / Json
     implementation (libs.retrofit)
     implementation(libs.converter.gson)
@@ -124,7 +131,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.truth)
-    testImplementation(libs.google.firebase.auth)
+//    testImplementation(libs.google.firebase.auth)
 
     // Instrumentation tests
     androidTestImplementation(libs.androidx.junit)
@@ -137,6 +144,10 @@ dependencies {
     androidTestImplementation(platform(libs.firebase.bom))
     androidTestImplementation(libs.firebase.firestore.ktx)
     testImplementation(kotlin("test"))
+
+    // MPAndroid Chart
+    implementation(libs.mpandroidchart)
+
 
 
 }
