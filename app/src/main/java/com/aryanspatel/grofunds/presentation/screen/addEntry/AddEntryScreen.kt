@@ -74,7 +74,6 @@ fun AddExpenseScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()      // UiState collector
     val selectedOption =  uiState.kind
 
-
     /**
      * Input helpers
      */
@@ -100,7 +99,6 @@ fun AddExpenseScreen(
     fun reset() {
         viewModel.resetScreen(selectedOption)
     }
-
 
     /**
      *  OnEntryKind change ->
@@ -323,7 +321,7 @@ fun ActionButtonsRow(onReset: () -> Unit, onSave: () -> Unit, saveEnabled: Boole
 
         Button(onClick = onReset,
             modifier = Modifier.weight(1f),
-            text = stringResource(R.string.entry_screen_reset_button_text),
+            text = stringResource(R.string.entry_screen_cancel_button_text),
             isOutlined = true)
 
         Button(onClick = onSave,
@@ -377,7 +375,7 @@ fun EditableDetailsSection(
                  */
                 ModernTextField(
                     value = state.amount,
-                    onValueChange = { onAmountValueSChanged(cleanAmountInput(it)) },
+                    onValueChange = { onAmountValueSChanged(it) },
                     label = stringResource(R.string.amount_label),
                     keyboardType = KeyboardType.Number,
                     suffix = state.currency,

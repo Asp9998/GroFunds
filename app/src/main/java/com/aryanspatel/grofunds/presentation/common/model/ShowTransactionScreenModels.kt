@@ -1,6 +1,7 @@
 package com.aryanspatel.grofunds.presentation.common.model
 
 import androidx.compose.ui.graphics.Color
+import androidx.credentials.provider.RemoteEntry
 import java.time.YearMonth
 
 enum class Kind { EXPENSE, INCOME }
@@ -9,15 +10,15 @@ data class Transaction(
     val userId: String,
     val id: String,
     val kind: Kind,
-    val amount: Double,
+    val amount: String,
     val currency: String,
     val categoryOrType: String,
     val subcategory: String? = null,
     val merchant: String? = null,
     val note: String? = null,
     val date: String,
-    val createdAt: Long
-
+    val createdAt: Long,
+    val remoteUpdatedAt: Long
 )
 
 data class TransactionUiState(
@@ -28,7 +29,8 @@ data class TransactionUiState(
     val categoryIds: Set<String>,
     val items: List<Transaction>,
     val loading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val displayTotal: Double? = null
 )
 
 /** For chart showcase*/

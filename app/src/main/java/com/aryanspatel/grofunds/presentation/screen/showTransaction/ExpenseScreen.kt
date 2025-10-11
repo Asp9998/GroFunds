@@ -33,6 +33,7 @@ fun ExpenseScreen(
     /**
      *   ViewModel States
      */
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val categoryTotalList by viewModel.categoryTotalList.collectAsStateWithLifecycle()
     val currentEditableTransaction by viewModel.currentTransaction.collectAsStateWithLifecycle()
@@ -40,7 +41,8 @@ fun ExpenseScreen(
     val categoryList by viewModel.categoryIds.collectAsStateWithLifecycle()
     val listOfExpenses = uiState.items
     val groupedExpenses = listOfExpenses.groupBy { it.date }
-    val totalSpent = uiState.items.sumOf { it.amount }
+
+    val totalSpent = uiState.displayTotal ?: 0.0
     val dailyAvg = viewModel.dailyAverageForMonth(totalSpent, uiState.month)
     val budget = 1500.0
 
@@ -112,13 +114,13 @@ fun ExpenseScreen(
                 } else {
                     groupedExpenses.forEach { (date, dateExpenses) ->
                         stickyHeader {
-                            DateHeader(date = date, total = dateExpenses.sumOf { it.amount })
+                            DateHeader(date = date, total = dateExpenses.sumOf { it.amount.toDouble() })
                         }
 
                         items(dateExpenses, key = { it.id }) { expense ->
                             TransactionCard(
                                 modifier = Modifier.animateItem(),
-                                amount = expense.amount,
+                                amount = expense.amount.toDoubleOrNull() ?: 0.0,
                                 categoryOrType = expense.categoryOrType,
                                 subcategory = expense.subcategory,
                                 merchant = expense.merchant,
@@ -132,7 +134,11 @@ fun ExpenseScreen(
                                     viewModel.setCurrTransaction(expense)
                                     createDuplicate = true; isShowEditOverlay = true},
                                 onExcludeFromReport = {},
-                                onDeleteTransaction = {}
+                                onDeleteTransaction = {
+                                    viewModel.onDeleteTransaction(
+                                        transactionId = expense.id,
+                                        kind = expense.kind.name,
+                                        amount = expense.amount.toDoubleOrNull() ?: 0.0) }
                             )
                         }
                     }
@@ -175,7 +181,7 @@ fun ExpenseScreen(
         EditDuplicateTransaction(
             transaction = AddEntryUiState(
                 kind = EntryKind.EXPENSE,
-                amount = currentEditableTransaction.amount.toString() ,
+                amount = currentEditableTransaction.amount.toString(),
                 categoryOrType = currentEditableTransaction.categoryOrType,
                 currency = currentEditableTransaction.currency,
                 date = currentEditableTransaction.date,

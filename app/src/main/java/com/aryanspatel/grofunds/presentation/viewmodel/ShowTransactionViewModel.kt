@@ -3,12 +3,12 @@ package com.aryanspatel.grofunds.presentation.viewmodel
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.data.local.entity.TransactionEntity
 import com.aryanspatel.grofunds.data.repository.AddEntryTransactionRepository
-import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.usecase.DateConverters
 import com.aryanspatel.grofunds.domain.usecase.expenseCategoryById
 import com.aryanspatel.grofunds.domain.usecase.incomeTypeById
@@ -21,6 +21,7 @@ import com.aryanspatel.grofunds.domain.usecase.resolveIncomeTypeId
 import com.aryanspatel.grofunds.domain.usecase.resolveIncomeTypeLabel
 import com.aryanspatel.grofunds.domain.usecase.subcategoriesFor
 import com.aryanspatel.grofunds.presentation.common.model.CategorySlice
+import com.aryanspatel.grofunds.utils.cleanAmountInput
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -82,6 +84,7 @@ class ShowTransactionViewModel @Inject constructor(
                 repo.observeTransactions(kind = kind.name, startDate = start, endDate = end, listOfCategory = cats.toList())
                     .map { entities ->
                         val domain: List<Transaction> = entities.map{ it.toDomain() }
+
                         TransactionUiState(
                             kind = kind,
                             month = _month.value,
@@ -121,6 +124,24 @@ class ShowTransactionViewModel @Inject constructor(
                             )
                         )
                     }
+            }.runningFold(
+                TransactionUiState(
+                    kind = kind,
+                    month = _month.value,
+                    startDate = _month.value.startOfMonthMillis(),
+                    endDate = _month.value.endExclusiveMillis(),
+                    categoryIds = emptySet(),
+                    items = emptyList(),
+                    loading = true,
+                    displayTotal = null
+                )
+            ) { prev, now ->
+                val currentTotal =
+                    if (now.items.isNotEmpty())
+                        now.items.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
+                    else prev.displayTotal
+
+                now.copy(displayTotal = currentTotal)
             }
             .stateIn(
                 scope = viewModelScope,
@@ -135,6 +156,8 @@ class ShowTransactionViewModel @Inject constructor(
                     loading = true
                 )
             )
+
+
 
     /** 6) Category wise sorting functions */
     fun toggleCategory(id: String) {
@@ -200,7 +223,7 @@ class ShowTransactionViewModel @Inject constructor(
         userId = "",
         id = "",
         kind = Kind.EXPENSE,
-        amount = 0.0,
+        amount = "0.0",
         currency = "",
         categoryOrType = "",
         subcategory = "",
@@ -208,10 +231,11 @@ class ShowTransactionViewModel @Inject constructor(
         note = "",
         date = "",
         createdAt = 0L,
+        remoteUpdatedAt = 0L
     ))
     val currentTransaction: StateFlow<Transaction> = _currentTransaction.asStateFlow()
 
-    fun onAmountUpdate(amount: String) = _currentTransaction.update { it.copy(amount = amount.toDouble()) }
+    fun onAmountUpdate(amount: String) = _currentTransaction.update { it.copy(amount = cleanAmountInput(amount)) }
     fun onCurrencyUpdate(currency: String) = _currentTransaction.update { it.copy(currency = currency)}
 
     fun onCategoryOrTypeUpdate(v: String) {
@@ -232,42 +256,58 @@ class ShowTransactionViewModel @Inject constructor(
     // for edit transaction, update the existing transaction
     fun onSaveTransaction(isCreateDuplicate: Boolean){
         viewModelScope.launch {
-        val uuid = UUID.randomUUID().toString()
-        val curr = _currentTransaction.value
-        val res = when(curr.kind){
-            Kind.EXPENSE -> resolveExpenseCategoryIds(curr.categoryOrType, curr.subcategory)
-            else -> resolveIncomeTypeId(curr.categoryOrType)
+            val uuid = UUID.randomUUID().toString()
+            val curr = _currentTransaction.value
+            val res = when(curr.kind){
+                Kind.EXPENSE -> resolveExpenseCategoryIds(curr.categoryOrType, curr.subcategory)
+                else -> resolveIncomeTypeId(curr.categoryOrType)
+            }
+            val dateMillis: Long = withContext(dp.default) {
+                curr.date.let { txt ->
+                    runCatching { DateConverters.stringToMillis(txt) }.getOrNull()
+                } ?: System.currentTimeMillis()
+            }
+
+            val now = System.currentTimeMillis()
+
+            repo.saveTransaction(TransactionEntity(
+                transactionID = if(isCreateDuplicate) uuid else curr.id,
+                userId = curr.userId,
+                kind = curr.kind.name,
+                amount = curr.amount.toDouble(),
+                currencyCode = curr.currency,
+                categoryOrTypeID = res.categoryId,
+                subcategoryID = res.subcategoryId,
+                merchant = curr.merchant ,
+                note = curr.note,
+                date = dateMillis,
+                createdAtUTC = curr.createdAt,
+                remoteUpdatedAt = curr.remoteUpdatedAt,
+                localeUpdatedAt = now,
+                isDirty = true,
+                isDeleted = false,
+            ))
         }
-        val dateMillis: Long = withContext(dp.default) {
-            curr.date.let { txt ->
-                runCatching { DateConverters.stringToMillis(txt) }.getOrNull()
-            } ?: System.currentTimeMillis()
+    }
+
+
+    fun onDeleteTransaction(transactionId: String, kind: String, amount: Double){
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            repo.markTransactionDelete(transactionId = transactionId, kind = kind, amount = amount, deletedAtUTC = now)
         }
-        val now = System.currentTimeMillis()
-        repo.saveTransaction(TransactionEntity(
-            transactionID = if(isCreateDuplicate) uuid else curr.id,
-            userId = curr.userId,
-            kind = curr.kind.name,
-            amount = curr.amount,
-            currencyCode = curr.currency,
-            categoryOrTypeID = res.categoryId,
-            subcategoryID = res.subcategoryId,
-            merchant = curr.merchant ,
-            note = curr.note,
-            date = dateMillis,
-            createdAtUTC = curr.createdAt,
-            localeUpdatedAt = now,
-            isDirty = true,
-            isDeleted = false,
-        ))
     }
-    }
-
-    // for duplicate transaction, add new one for specific date
-
-
-
 }
+
+
+
+
+
+
+
+
+
+
 
 private fun TransactionEntity.toDomain(): Transaction{
     val res = when(kind){
@@ -278,14 +318,15 @@ private fun TransactionEntity.toDomain(): Transaction{
         userId = userId,
         id = transactionID,
         kind = if (kind == Kind.INCOME.name) Kind.INCOME else Kind.EXPENSE,
-        amount = amount,
+        amount = amount.toString(),
         currency = currencyCode,
         categoryOrType = res.categoryId,  // return category label
         subcategory = res.subcategoryId,  // return subcategory label
         merchant = merchant,
         note = note,
         date = DateConverters.millisToString(date),
-        createdAt = createdAtUTC
+        createdAt = createdAtUTC,
+        remoteUpdatedAt = remoteUpdatedAt
     )
 }
 

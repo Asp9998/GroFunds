@@ -1,11 +1,13 @@
 package com.aryanspatel.grofunds.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.core.DispatcherProvider
-import com.aryanspatel.grofunds.data.model.UserProfile
+import com.aryanspatel.grofunds.data.remote.model.UserProfile
 import com.aryanspatel.grofunds.domain.model.AuthUser
+import com.aryanspatel.grofunds.domain.port.SyncOrchestrator
 import com.aryanspatel.grofunds.domain.repository.AuthRepository
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
 import com.aryanspatel.grofunds.presentation.common.model.UiText
@@ -30,6 +32,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val orchestrator: SyncOrchestrator,
     private val dp: DispatcherProvider
 ) : ViewModel() {
 
@@ -138,6 +141,7 @@ class AuthViewModel @Inject constructor(
                     .onFailure {
                         _uiState.value = AuthState.Error(message = it.message ?: "Profile update failed") }
                 _uiState.value = AuthState.LoggedIn
+
             }
             .onFailure { e ->
                 _uiState.value = mapErrorToState(e)
@@ -168,10 +172,15 @@ class AuthViewModel @Inject constructor(
             }
     }
 
-    fun signOut() {
+    fun signOut() = viewModelScope.launch{
+        val pushed = orchestrator.pushAllDirtyAndWait()
+        if(!pushed){
+            Log.d("SingOutException", "signOut: Pushed failed, cannot sign out")
+            return@launch
+        }
         authRepository.signOut()
-        // user/profile flows will emit null automatically
-    }
+     }
+
 
     /** ------ Map AuthState → user-facing message (no Context) --------  */
     fun AuthState.toUiMessage(): UiText? = when (this) {

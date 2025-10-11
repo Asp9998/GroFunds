@@ -4,15 +4,19 @@ import android.util.Log
 import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.core.awaitIo
 import com.aryanspatel.grofunds.data.local.dao.AccountSummaryDao
+import com.aryanspatel.grofunds.data.local.dao.SyncStateDao
 import com.aryanspatel.grofunds.data.local.dao.TransactionDao
 import com.aryanspatel.grofunds.data.local.entity.AccountSummaryEntity
 import com.aryanspatel.grofunds.data.local.entity.TransactionEntity
-import com.aryanspatel.grofunds.data.model.CategoryTotal
+import com.aryanspatel.grofunds.data.remote.model.CategoryTotal
+import com.aryanspatel.grofunds.data.remote.model.TransactionDoc
+import com.aryanspatel.grofunds.domain.model.CategoryResolution
 import com.aryanspatel.grofunds.domain.model.DraftRef
 import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.model.ParseState
 import com.aryanspatel.grofunds.domain.model.ParsedEntry
 import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
+import com.aryanspatel.grofunds.domain.repository.CurrentUserProvider
 import com.aryanspatel.grofunds.domain.usecase.DateConverters
 import com.aryanspatel.grofunds.domain.usecase.resolveExpenseCategoryIds
 import com.aryanspatel.grofunds.domain.usecase.resolveIncomeTypeId
@@ -22,6 +26,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions.merge
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -30,8 +35,6 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -52,7 +55,9 @@ import javax.inject.Singleton
 class AddEntryTransactionRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
+    private val currentUser: CurrentUserProvider,
     private val transactionDao: TransactionDao,
+    private val syncStateDao: SyncStateDao,
     private val accountSummaryDao: AccountSummaryDao,
     private val dp: DispatcherProvider
 ): AddEntryRepository {
@@ -67,7 +72,12 @@ class AddEntryTransactionRepository @Inject constructor(
         EntryKind.GOAL    -> "saving"
     }
 
-    private val userUId = auth.currentUser?.uid ?: error("Not logged in")
+//    private val userUId = auth.currentUser?.uid ?: error("Not logged in")
+    private val userUid = currentUser.userIdOrNull() ?: error("Not logged in")
+
+//    fun getCurrentUser(): String?{
+//        return auth.currentUser?.uid
+//    }
 
     // ───────────────────────────── Create ─────────────────────────────
 
@@ -157,7 +167,7 @@ class AddEntryTransactionRepository @Inject constructor(
      * - Sets updatedAt server timestamp.
      */
     override suspend fun saveExpense(id: String, e: ParsedEntry.Expense) {
-        val docRef = db.collection("users").document(userUId).collection("transactions").document(id)
+        val docRef = db.collection("users").document(userUid).collection("transactions").document(id)
 
         val dateMillis: Long = withContext(dp.default) {
             e.dateText?.let { txt ->
@@ -168,25 +178,41 @@ class AddEntryTransactionRepository @Inject constructor(
         val res = resolveExpenseCategoryIds(e.category, e.subcategory)
         Log.d("CategoryIssue", "saveExpense: ${e.category}, ${res.categoryId}, ${res.subcategoryId} ")
 
-        val updateExpense = mapOf(
-            "transactionID"  to id,
-            "kind"           to e.kind,
-            "input"          to e.input,
-            "amount"         to e.amount,
-            "currency"       to (e.currency?.uppercase(Locale.ROOT)),
-            "categoryID"     to res.categoryId,
-            "subcategoryID"  to res.subcategoryId,
-            "merchant"       to e.merchant?.ifBlank { null },
-            "note"           to e.notes?.ifBlank { null },
-            "date"           to Timestamp(Date(dateMillis)),
-            "status"         to "saved",
-            "updatedAt"      to FieldValue.serverTimestamp()
+//        val updateExpense = mapOf(
+//            "transactionID"        to id,
+//            "kind"                 to e.kind,
+//            "input"                to e.input,
+//            "amount"               to e.amount,
+//            "currency"             to (e.currency?.uppercase(Locale.ROOT)),
+//            "categoryOrTypeID"     to res.categoryId,
+//            "subcategoryID"        to res.subcategoryId,
+//            "merchant"             to e.merchant?.ifBlank { null },
+//            "note"                 to e.notes?.ifBlank { null },
+//            "date"                 to Timestamp(Date(dateMillis)),
+//            "status"               to "saved",
+//            "updatedAt"            to FieldValue.serverTimestamp()
+//        )
+
+        val payload  = TransactionDoc(
+            transactionID   = id,
+            kind            = e.kind,
+            input           = e.input,
+            amount          = e.amount,
+            currency        = e.currency?.uppercase(Locale.ROOT),
+            categoryOrTypeID= res.categoryId,
+            subcategoryID   = res.subcategoryId,
+            merchant        = e.merchant?.ifBlank { null },
+            note            = e.notes?.ifBlank { null },
+            date            = Timestamp(Date(dateMillis)),
+            status          = "saved",
+            updatedAt       = FieldValue.serverTimestamp()                   // important: let server set it
         )
 
         val now = System.currentTimeMillis()
         val transaction = TransactionEntity(
             transactionID = id,
-            userId = userUId,
+            userId = userUid,
+            input = e.input ?: "",
             kind = e.kind.toString(),
             amount = e.amount ?: 0.0,
             currencyCode = (e.currency?.uppercase(Locale.ROOT) ?: ""),
@@ -196,7 +222,7 @@ class AddEntryTransactionRepository @Inject constructor(
             note = e.notes,
             date = dateMillis,
             createdAtUTC = now,
-            localeUpdatedAt = now ,
+            localUpdatedAt = now ,
             remoteUpdatedAt = 0L,
             isDeleted = false,
             isDirty = true,
@@ -204,25 +230,21 @@ class AddEntryTransactionRepository @Inject constructor(
 
         // save to firebase
         withTimeout(15_000) {
-            docRef.set(updateExpense).awaitIo(dp)
+            docRef.set(payload).awaitIo(dp)
         }
-        // save to room
-        saveTransaction(transaction)
 
+        insertAccountIfAbsent(currency = e.currency?.uppercase(Locale.ROOT) ?: "", updateAt = now)
+        saveTransaction(transaction)
         runCatching {
             val snap = withTimeout(10_000) { docRef.get().awaitIo(dp) }
             val serverMillis = snap.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
             transactionDao.updateRemoteUpdatedAt(id = id, remoteUpdatedAt = serverMillis)
         }
 
-        // update expense in account Summary
-        insertAccountIfAbsent(currency = e.currency?.uppercase(Locale.ROOT) ?: "", updateAt = now)
-        updateExpense(expense = e.amount ?: 0.0, updatedAt = now)
-
     }
 
     override suspend fun saveIncome(id: String, i: ParsedEntry.Income) {
-        val docRef = db.collection("users").document(userUId).collection("transactions").document(id)
+        val docRef = db.collection("users").document(userUid).collection("transactions").document(id)
 
         val dateMillis: Long = withContext(dp.default) {
             i.dateText?.let { txt ->
@@ -232,23 +254,36 @@ class AddEntryTransactionRepository @Inject constructor(
 
         val res = resolveIncomeTypeId(i.type)
 
-        val updateIncome = mapOf(
-            "transactionID"  to id,
-            "kind"           to i.kind,
-            "input"          to i.input,
-            "amount"         to i.amount,
-            "currency"       to i.currency?.uppercase(Locale.ROOT),
-            "typeID"         to res.categoryId,
-            "date"           to Timestamp(Date(dateMillis)),
-            "note"           to i.notes?.ifBlank { null },
-            "status"         to "saved",
-            "updatedAt"      to FieldValue.serverTimestamp()
+//        val updateIncome = mapOf(
+//            "transactionID"  to id,
+//            "kind"           to i.kind,
+//            "input"          to i.input,
+//            "amount"         to i.amount,
+//            "currency"       to i.currency?.uppercase(Locale.ROOT),
+//            "categoryOrTypeID"         to res.categoryId,
+//            "date"           to Timestamp(Date(dateMillis)),
+//            "note"           to i.notes?.ifBlank { null },
+//            "status"         to "saved",
+//            "updatedAt"      to FieldValue.serverTimestamp())
+
+        val payload  = TransactionDoc(
+            transactionID   = id,
+            kind            = i.kind,
+            input           = i.input,
+            amount          = i.amount,
+            currency        = i.currency?.uppercase(Locale.ROOT),
+            categoryOrTypeID= res.categoryId,
+            note            = i.notes?.ifBlank { null },
+            date            = Timestamp(Date(dateMillis)),
+            status          = "saved",
+            updatedAt       = FieldValue.serverTimestamp()                   // important: let server set it
         )
 
         val now = System.currentTimeMillis()
         val transaction = TransactionEntity(
             transactionID = id,
-            userId = userUId,
+            userId = userUid,
+            input = i.input ?: "",
             kind = i.kind.toString(),
             amount = i.amount ?: 0.0,
             currencyCode = (i.currency?.uppercase(Locale.ROOT) ?: ""),
@@ -256,32 +291,30 @@ class AddEntryTransactionRepository @Inject constructor(
             note = i.notes,
             date = dateMillis,
             createdAtUTC = now,
-            localeUpdatedAt = now ,
+            localUpdatedAt = now ,
             remoteUpdatedAt = 0L,
             isDeleted = false,
             isDirty = true,
         )
 
         withTimeout(15_000) {
-            docRef.set(updateIncome).awaitIo(dp)
+            docRef.set(payload).awaitIo(dp)
         }
 
+        // update income in account Summary
+        insertAccountIfAbsent(currency = i.currency?.uppercase(Locale.ROOT) ?: "", updateAt = now)
         saveTransaction(transaction)
-
         runCatching {
             val snap = withTimeout(10_000) { docRef.get().awaitIo(dp) }
             val serverMillis = snap.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
             transactionDao.updateRemoteUpdatedAt(id = id, remoteUpdatedAt = serverMillis)
         }
 
-        // update income in account Summary
-        insertAccountIfAbsent(currency = i.currency?.uppercase(Locale.ROOT) ?: "", updateAt = now)
-        updateIncome(income = i.amount ?: 0.0, updatedAt = now)
     }
 
     override suspend fun saveGoal(id: String, g: ParsedEntry.Goal) {
 
-        val docRef = db.collection("users").document(userUId).collection("savings").document(id)
+        val docRef = db.collection("users").document(userUid).collection("savings").document(id)
 
         val dateMillis: Long = withContext(dp.default) {
             g.dateText?.let { txt ->
@@ -292,18 +325,18 @@ class AddEntryTransactionRepository @Inject constructor(
         val res = resolveSavingTypeId(g.type)
         val now = System.currentTimeMillis()
         val updateGoal = mapOf(
-            "savingID"      to id,
-            "input"         to g.input,
-            "title"         to g.title,
-            "typeID"        to res.categoryId,
-            "amount"        to g.amount,
-            "currency"      to g.currency?.uppercase(Locale.ROOT),
-            "dueDate"       to g.dueDate,
-            "startAmount"   to g.startAmount,
-            "date"          to Timestamp(Date(dateMillis)),
-            "note"          to g.notes?.ifBlank { null },
-            "status"        to "saved",
-            "updatedAt"     to FieldValue.serverTimestamp()
+            "savingID"                to id,
+            "input"                   to g.input,
+            "title"                   to g.title,
+            "categoryOrTypeID"        to res.categoryId,
+            "amount"                  to g.amount,
+            "currency"                to g.currency?.uppercase(Locale.ROOT),
+            "dueDate"                 to g.dueDate,
+            "startAmount"             to g.startAmount,
+            "date"                    to Timestamp(Date(dateMillis)),
+            "note"                    to g.notes?.ifBlank { null },
+            "status"                  to "saved",
+            "updatedAt"               to FieldValue.serverTimestamp()
         )
 
         withTimeout(15_000) {
@@ -338,7 +371,30 @@ class AddEntryTransactionRepository @Inject constructor(
 
     // ---------  Transaction Dao methods
 
-    suspend fun saveTransaction(transaction: TransactionEntity) = transactionDao.saveTransaction(transaction)
+    suspend fun saveTransaction(transaction: TransactionEntity) {
+        transactionDao.saveTransaction(transaction)
+        // update account summary -- adding
+
+        when(transaction.kind){
+            EntryKind.EXPENSE.name -> updateExpense(expense = transaction.amount, updatedAt = transaction.localUpdatedAt)
+            EntryKind.INCOME.name -> updateIncome(income = transaction.amount, updatedAt = transaction.localUpdatedAt)
+            else -> updateSaving(saving = transaction.amount, updatedAt = transaction.localUpdatedAt)
+        }
+    }
+
+    suspend fun markTransactionDelete(transactionId: String, kind: String, amount: Double, deletedAtUTC: Long){
+        transactionDao.markDeleted(transactionId, userId = userUid, deletedAtUTC = deletedAtUTC)
+
+        when(kind){
+            EntryKind.EXPENSE.name -> updateExpense(expense = -amount, updatedAt = deletedAtUTC)
+            EntryKind.INCOME.name -> updateIncome(income = -amount, updatedAt = deletedAtUTC)
+            else -> updateSaving(saving = -amount, updatedAt = deletedAtUTC)
+        }
+
+    }
+
+
+
 
 //    suspend fun saveAllTransactions(listOfTransaction: List<TransactionEntity>) = transactionDao.upsertAll(listOfTransaction)
 
@@ -346,7 +402,7 @@ class AddEntryTransactionRepository @Inject constructor(
 
 
     fun observeTransactions(
-        userId: String = userUId,
+        userId: String = userUid,
         kind: String,
         startDate: Long,
         endDate: Long,
@@ -362,18 +418,13 @@ class AddEntryTransactionRepository @Inject constructor(
 //    fun observeCategoryTotal
 
     fun observeCategoryTotal(
-        userId: String = userUId,
+        userId: String = userUid,
         kind: String,
         startDate: Long,
         endDate: Long
     ): Flow<List<CategoryTotal>>{
         return transactionDao.observeCategoryTotals(userId, kind, startDate, endDate)
     }
-
-
-
-
-
 
 //
 //    fun observeMonthly(userId: String, kind: String, startDate: Long, endDate: Long): Flow<List<Transaction>>
@@ -392,7 +443,7 @@ class AddEntryTransactionRepository @Inject constructor(
     ) =
         accountSummaryDao.insertAccountIfAbsent(
             AccountSummaryEntity(
-                userId = userUId,
+                userId = userUid,
                 currencyCode = currency,
                 updatedAt = updateAt,
             )
@@ -407,16 +458,15 @@ class AddEntryTransactionRepository @Inject constructor(
 //        accountSummaryDao.applyDelta(userUId, expense, income, saving, updatedAt)
 
     suspend fun updateIncome(income: Double, updatedAt: Long) =
-        accountSummaryDao.updateIncome(userUId, income, updatedAt)
+        accountSummaryDao.updateIncome(userUid, income, updatedAt)
 
     suspend fun updateExpense(expense: Double, updatedAt: Long) =
-        accountSummaryDao.updateExpense(userUId, expense, updatedAt)
+        accountSummaryDao.updateExpense(userUid, expense, updatedAt)
 
     suspend fun updateSaving(saving: Double, updatedAt: Long) =
-        accountSummaryDao.updateSaving(userUId, saving, updatedAt)
+        accountSummaryDao.updateSaving(userUid, saving, updatedAt)
 
 
     fun observeAccountSummary(): Flow<AccountSummaryEntity?> =
-        accountSummaryDao.observeAccountSummary(userUId)
-
+        accountSummaryDao.observeAccountSummary(userUid)
 }

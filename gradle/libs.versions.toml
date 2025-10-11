@@ -36,6 +36,7 @@ appcompatResources = "1.7.1"
 roomCompiler = "2.8.1"
 roomKtx = "2.8.1"
 roomRuntime = "2.8.1"
+lifecycleProcess = "2.9.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -93,6 +94,7 @@ androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

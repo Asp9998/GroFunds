@@ -2,8 +2,8 @@ package com.aryanspatel.grofunds.data.repository
 
 import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.core.awaitIo
-import com.aryanspatel.grofunds.data.model.UserProfile
-import com.aryanspatel.grofunds.data.model.toUserProfile
+import com.aryanspatel.grofunds.data.remote.model.UserProfile
+import com.aryanspatel.grofunds.data.remote.model.toUserProfile
 import com.aryanspatel.grofunds.domain.repository.AuthRepository
 import com.aryanspatel.grofunds.domain.model.AuthUser
 import com.google.firebase.auth.FirebaseAuth

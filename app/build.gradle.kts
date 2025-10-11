@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.appcompat.resources)
+    implementation(libs.androidx.lifecycle.process)
 
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)

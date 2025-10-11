@@ -1,7 +1,6 @@
 package com.aryanspatel.grofunds.presentation.screen.showTransaction
 
 import android.annotation.SuppressLint
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,7 +14,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -29,11 +27,8 @@ import kotlin.math.*
 import androidx.compose.ui.graphics.ImageBitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.tooling.preview.Preview
-import com.aryanspatel.grofunds.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -45,7 +40,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import com.aryanspatel.grofunds.data.model.CategoryTotal
 import com.aryanspatel.grofunds.presentation.common.model.CategorySlice
 import com.aryanspatel.grofunds.presentation.common.model.Kind
 import kotlin.math.max
@@ -81,8 +75,9 @@ fun ExpenseDonutChart(
 ) {
 
     // colors
+    val surface = MaterialTheme.colorScheme.surface
     val back = MaterialTheme.colorScheme.surfaceVariant
-    val main = MaterialTheme.colorScheme.background
+//    val main = MaterialTheme.colorScheme.background
     val on = MaterialTheme.colorScheme.onSurface
     val iconBackGround = MaterialTheme.colorScheme.background
     val iconColor = MaterialTheme.colorScheme.onPrimary
@@ -119,7 +114,7 @@ fun ExpenseDonutChart(
                 val d = size.minDimension
                 val r = d / 2f
                 drawCircle(back, r, center)
-                drawCircle(main, r * holeRatio, center)
+                drawCircle(surface, r * holeRatio, center)
                 return@Canvas
             }
 
@@ -148,7 +143,7 @@ fun ExpenseDonutChart(
 
             // Donut hole
             val innerR = radius * holeRatio
-            drawCircle(main, innerR, center)
+            drawCircle(surface, innerR, center)
 
             // Label geometry
             val outerR = radius * 0.92f
@@ -310,9 +305,9 @@ fun ExpenseDonutChart(
                 )
             } else {
                 Text(
-                    text = "No expenses",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "No Entry",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondary
                 )
             }
         }

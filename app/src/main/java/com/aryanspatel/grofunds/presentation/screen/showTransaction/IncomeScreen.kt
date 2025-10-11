@@ -34,7 +34,6 @@ import com.aryanspatel.grofunds.domain.usecase.BuiltInIncomeTypes
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
 import com.aryanspatel.grofunds.presentation.viewmodel.ShowTransactionViewModel
-import java.time.YearMonth
 
 @Composable
 fun IncomeScreen(viewModel: ShowTransactionViewModel = hiltViewModel()) {
@@ -49,7 +48,7 @@ fun IncomeScreen(viewModel: ShowTransactionViewModel = hiltViewModel()) {
     val categoryList by viewModel.categoryIds.collectAsStateWithLifecycle()
     val listOfIncomes = uiState.items
     val groupedIncomes = listOfIncomes.groupBy { it.date }
-    val totalSaved = uiState.items.sumOf { it.amount }
+    val totalSaved = uiState.displayTotal ?: 0.0
 
     /**
      * Helping States
@@ -116,13 +115,13 @@ fun IncomeScreen(viewModel: ShowTransactionViewModel = hiltViewModel()) {
                 }else {
                     groupedIncomes.forEach { (date, dateIncomes) ->
                         stickyHeader {
-                            DateHeader(date = date.toString(), total = dateIncomes.sumOf { it.amount })
+                            DateHeader(date = date, total = dateIncomes.sumOf { it.amount.toDoubleOrNull() ?: 0.0 })
                         }
 
                         items(dateIncomes, key = { it.id }) { income ->
                             TransactionCard(
                                 modifier = Modifier.animateItem(),
-                                amount = income.amount,
+                                amount = income.amount.toDoubleOrNull() ?: 0.0,
                                 categoryOrType = income.categoryOrType,
                                 note = income.note,
                                 isExpenseOverlay = false,
@@ -133,7 +132,11 @@ fun IncomeScreen(viewModel: ShowTransactionViewModel = hiltViewModel()) {
                                     viewModel.setCurrTransaction(income)
                                     createDuplicate = true; isShowEditOverlay = true},
                                 onExcludeFromReport = {},
-                                onDeleteTransaction = {},
+                                onDeleteTransaction = {
+                                    viewModel.onDeleteTransaction(
+                                        transactionId = income.id,
+                                        kind = income.kind.name,
+                                        amount = income.amount.toDoubleOrNull() ?: 0.0) },
                             )
                         }
                     }

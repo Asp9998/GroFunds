@@ -8,13 +8,12 @@ import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.model.ParseState
 import com.aryanspatel.grofunds.domain.model.ParsedEntry
 import com.aryanspatel.grofunds.domain.repository.AddEntryRepository
-import com.aryanspatel.grofunds.domain.usecase.DateConverters
 import com.aryanspatel.grofunds.domain.usecase.DateConverters.normalizeDateStrict
 import com.aryanspatel.grofunds.presentation.common.model.SaveState
 import com.aryanspatel.grofunds.presentation.common.model.SubmitState
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
 import com.aryanspatel.grofunds.domain.usecase.subcategoriesFor
-import com.google.firebase.Timestamp
+import com.aryanspatel.grofunds.utils.cleanAmountInput
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,7 +29,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
 
@@ -240,7 +238,7 @@ class AddEntryViewModel @Inject constructor(
     }
 
     fun onInputNoteChanged(v: String)         = _uiState.update { it.copy(inputNote = v) }
-    fun onAmountChanged(v: String)            = _uiState.update { it.copy(amount = v) }
+    fun onAmountChanged(v: String)            = _uiState.update { it.copy(amount = cleanAmountInput(v)) }
     fun onCurrencyChanged(v: String)          = _uiState.update { it.copy(currency = v) }
     fun onDateChanged(v: String)              = _uiState.update { it.copy(date = v) }
     fun onCategoryOrTypeChanged(v: String){

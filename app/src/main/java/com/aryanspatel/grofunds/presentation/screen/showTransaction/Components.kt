@@ -61,7 +61,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.domain.model.CategorySeed
-import com.aryanspatel.grofunds.presentation.common.model.Transaction
 import com.aryanspatel.grofunds.presentation.components.DeleteConfirmationDialog
 import com.aryanspatel.grofunds.presentation.components.ModernDropDownMenuItem
 import com.aryanspatel.grofunds.presentation.components.MonthYearPickerDialog

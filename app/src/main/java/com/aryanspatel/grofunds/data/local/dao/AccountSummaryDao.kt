@@ -18,6 +18,9 @@ interface AccountSummaryDao {
     @Query("SELECT * FROM accountSummaryEntity WHERE user_id = :userId")
     fun observeAccountSummary(userId: String) : Flow<AccountSummaryEntity?>
 
+    @Query("SELECT * FROM accountSummaryEntity WHERE user_id = :userId")
+    suspend fun getSummary(userId: String) : AccountSummaryEntity?
+
     /** 3) General data applier */
     @Query("""
             UPDATE accountSummaryEntity

@@ -17,6 +17,9 @@ data class TransactionEntity(
     @ColumnInfo("user_id")
     val userId: String,
 
+    @ColumnInfo("input_note")
+    val input: String,
+
     @ColumnInfo("kind")  // EXPENSE | INCOME
     val kind: String,
 
@@ -48,8 +51,11 @@ data class TransactionEntity(
     @ColumnInfo("remote_updated_at")
     val remoteUpdatedAt: Long = 0L,
 
-    @ColumnInfo("locale_updated_at")
-    val localeUpdatedAt: Long,
+    @ColumnInfo("local_updated_at")
+    val localUpdatedAt: Long,
+
+    @ColumnInfo("is_excluded")
+    val isExcluded: Boolean = false,
 
     @ColumnInfo("is_dirty")
     val isDirty: Boolean = true,
