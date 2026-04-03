@@ -29,6 +29,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -36,12 +37,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.LinearGradient
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import com.aryanspatel.grofunds.presentation.common.model.CategorySlice
 import com.aryanspatel.grofunds.presentation.common.model.Kind
+import com.aryanspatel.grofunds.presentation.components.ModernIconBadge
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -60,6 +64,7 @@ import kotlin.math.roundToInt
 @SuppressLint("LocalContextResourcesRead")
 @Composable
 fun ExpenseDonutChart(
+    kind: String,
     categoryTotalList: List<CategorySlice>,
     grandTotal: Double,
     modifier: Modifier = Modifier,
@@ -69,18 +74,15 @@ fun ExpenseDonutChart(
     iconGap: Dp = 0.dp,
     leaderLen: Dp = 32.dp,                 // ↑ longer leaders by default
     labelTextSizeSp: Int = 12,
-    iconSizeDp: Dp = 14.dp,
+    iconSizeDp: Dp = 18.dp,
     chartWidthFraction: Float = 0.4f,      // ← use 40% of available width
     currency: (Float) -> String = { "$" + "%,.0f".format(it) }
 ) {
 
     // colors
-    val surface = MaterialTheme.colorScheme.surface
+    val innerCircleColor = MaterialTheme.colorScheme.surface
     val back = MaterialTheme.colorScheme.surfaceVariant
-//    val main = MaterialTheme.colorScheme.background
-    val on = MaterialTheme.colorScheme.onSurface
-    val iconBackGround = MaterialTheme.colorScheme.background
-    val iconColor = MaterialTheme.colorScheme.onPrimary
+    val percentageColor = MaterialTheme.colorScheme.onSecondary
 
     // Filter zeros, stable order
     val slices = categoryTotalList
@@ -94,14 +96,32 @@ fun ExpenseDonutChart(
             }
         }
     }
+    val icon = slices.map { slices -> slices.emoji }
 
-    Card(modifier = modifier,
-        elevation = CardDefaults.cardElevation(4.dp),
-        shape = RoundedCornerShape(20.dp)
+    val backgroundColor =
+        if(kind == Kind.EXPENSE.name)
+            Brush.linearGradient(listOf(
+                MaterialTheme.colorScheme.onSecondaryContainer,
+                MaterialTheme.colorScheme.onPrimaryContainer))
+        else Brush.linearGradient(listOf(
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.primaryContainer))
+
+    val borderColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurface
+    else MaterialTheme.colorScheme.onBackground
+
+    val iconBackground = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurfaceVariant
+    else MaterialTheme.colorScheme.surfaceContainer
+    val iconTint = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.surfaceDim
+    else MaterialTheme.colorScheme.surfaceTint
+
+    val emojiColor = LocalContentColor.current.copy(alpha = 1f);
+    Column(modifier = modifier.clip(RoundedCornerShape(20.dp))
+        .background(backgroundColor)
+        .border(1.dp, borderColor, RoundedCornerShape(20.dp))
         ){
     Box(
         modifier = Modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
             .padding(vertical = 100.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -114,7 +134,7 @@ fun ExpenseDonutChart(
                 val d = size.minDimension
                 val r = d / 2f
                 drawCircle(back, r, center)
-                drawCircle(surface, r * holeRatio, center)
+                drawCircle(innerCircleColor, r * holeRatio, center)
                 return@Canvas
             }
 
@@ -143,7 +163,7 @@ fun ExpenseDonutChart(
 
             // Donut hole
             val innerR = radius * holeRatio
-            drawCircle(surface, innerR, center)
+            drawCircle(innerCircleColor, innerR, center)
 
             // Label geometry
             val outerR = radius * 0.92f
@@ -209,7 +229,7 @@ fun ExpenseDonutChart(
             // Draw lines + icon + %
             val iconPx = iconSizeDp.toPx()
             val textStyle = TextStyle(
-                color = on,
+                color = percentageColor,
                 fontSize = labelTextSizeSp.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -262,22 +282,35 @@ fun ExpenseDonutChart(
 
                 // draw badge background (fill + optional ring)
                 drawCircle(
-                    color = iconBackGround,
+                    color = iconBackground,
                     radius = badgeRadius,
                     center = iconCenter
                 )
 
-                // draw the icon centered inside the badge
-                plan.bitmap?.let { bmp ->
+                s.emoji.let {
                     val left = (iconCenter.x - iconHalf).roundToInt()
                     val top  = (iconCenter.y - iconHalf).roundToInt()
-                    drawImage(
-                        colorFilter = ColorFilter.tint(iconColor),
-                        image = bmp,
-                        dstOffset = IntOffset(left, top),
-                        dstSize = IntSize(iconPx.roundToInt(), iconPx.roundToInt())
+                    drawText(
+                        textLayoutResult = textMeasurer.measure(it ?: "🧩", TextStyle(fontSize = 16.sp)),
+                        color = emojiColor,
+                        topLeft = Offset(
+                            x = left.toFloat(),
+                            y = top.toFloat()
+                        ),
                     )
                 }
+
+                // draw the icon centered inside the badge
+//                plan.bitmap?.let { bmp ->
+//                    val left = (iconCenter.x - iconHalf).roundToInt()
+//                    val top  = (iconCenter.y - iconHalf).roundToInt()
+//                    drawImage(
+//                        colorFilter = ColorFilter.tint(iconTint),
+//                        image = bmp,
+//                        dstOffset = IntOffset(left, top),
+//                        dstSize = IntSize(iconPx.roundToInt(), iconPx.roundToInt())
+//                    )
+//                }
 
                 // place the percentage text AFTER the badge along the same radial
                 val textAfter = gapPx + (badgeRadius * 2f) + 4.dp.toPx()   // badge diameter + a little space
@@ -301,7 +334,8 @@ fun ExpenseDonutChart(
                 Text(
                     text = currency(grandTotal.toFloat()),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
                 Text(
@@ -327,6 +361,7 @@ enum class CategoryStatus {
 
 @Composable
 fun CategorySummaryList(
+    kind: String,
     categories: List<CategorySlice>,
     modifier: Modifier = Modifier,
 ) {
@@ -336,25 +371,32 @@ fun CategorySummaryList(
         categories.maxOfOrNull { it.amount } ?: 1.0
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.navigationBars)
+        .padding(bottom = 10.dp)
+    ) {
         // Header with sorting
         CategoryListHeader(
+            kind = kind,
             sortBy = sortBy,
             onSortChange = { sortBy = it }
         )
         HorizontalDivider(
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            color = MaterialTheme.colorScheme.surfaceVariant
         )
 
         categories.forEachIndexed { index, summary ->
             CategorySummaryRow(
+                kind = kind,
                 category = summary,
                 maxSpent = maxSpent
             )
             HorizontalDivider(
+                modifier = Modifier.padding(start = 66.dp),
                 thickness = 1.dp,
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                color = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }
@@ -362,6 +404,7 @@ fun CategorySummaryList(
 
 @Composable
 fun CategoryListHeader(
+    kind: String,
     sortBy: SortType,
     onSortChange: (SortType) -> Unit,
     modifier: Modifier = Modifier
@@ -381,16 +424,19 @@ fun CategoryListHeader(
                 Text(
                     text = "Categories",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SortChip(
+                        kind = kind,
                         label = "Spent",
                         selected = sortBy == SortType.SPENT,
                         onClick = { onSortChange(SortType.SPENT) }
                     )
                     SortChip(
+                        kind = kind,
                         label = "A–Z",
                         selected = sortBy == SortType.NAME,
                         onClick = { onSortChange(SortType.NAME) }
@@ -403,23 +449,28 @@ fun CategoryListHeader(
 
 @Composable
 fun SortChip(
+    kind: String,
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val background = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurfaceVariant
+    else MaterialTheme.colorScheme.surfaceContainer
+
     FilterChip(
         colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface,
-            selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant),
+            selectedContainerColor = background),
         border = FilterChipDefaults.filterChipBorder(enabled = true, selected = selected,
-            borderWidth = 1.dp,
-            borderColor = MaterialTheme.colorScheme.onSecondary.copy(0.3f)),
+            borderWidth = 0.dp,
+            borderColor = Color.Transparent),
         selected = selected,
         onClick = onClick,
         label = {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimary
             )
         },
         modifier = modifier
@@ -429,10 +480,16 @@ fun SortChip(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CategorySummaryRow(
+    kind: String,
     category: CategorySlice,
     maxSpent: Double,
     modifier: Modifier = Modifier
 ) {
+
+    val iconBackground = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.surfaceContainer
+    val iconTint = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.surfaceDim
+                            else MaterialTheme.colorScheme.surfaceTint
 
     // Calculations
     val percentUsed = remember(category) {
@@ -481,27 +538,33 @@ fun CategorySummaryRow(
 
     Row(
         modifier = modifier
-            .fillMaxWidth().background(MaterialTheme.colorScheme.surface)
+            .fillMaxWidth()
+//            .background(MaterialTheme.colorScheme.surface)
             .padding( 16.dp)
             .semantics { this.contentDescription = contentDesc },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(category.iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
-        }
+//        Box(
+//            modifier = Modifier
+//                .size(40.dp)
+//                .clip(RoundedCornerShape(10.dp))
+//                .background(iconBackground),
+//            contentAlignment = Alignment.Center
+//        ) {
+//            Icon(
+//                painter = painterResource(category.iconRes),
+//                contentDescription = null,
+//                modifier = Modifier.size(20.dp),
+//                tint = iconTint)
+//        }
+
+        ModernIconBadge(
+            text = category.emoji ?: "🧩",
+            background = Color.Transparent,
+            iconTint = iconTint
+        )
 
         // Center content
         Column(
@@ -513,7 +576,8 @@ fun CategorySummaryRow(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onPrimary
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -526,7 +590,8 @@ fun CategorySummaryRow(
                 Text(
                     text = category.amount.roundToInt().toString(),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSecondary
                 )
                 if(category.kind == Kind.EXPENSE){
                     Text(

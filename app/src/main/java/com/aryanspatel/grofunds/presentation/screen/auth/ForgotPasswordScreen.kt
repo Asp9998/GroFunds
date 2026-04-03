@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
 import com.aryanspatel.grofunds.presentation.common.model.UserCredentials
-import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
+import com.aryanspatel.grofunds.presentation.components.ModernButton
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
 import com.aryanspatel.grofunds.presentation.components.ProgressIndicator
 import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
@@ -96,12 +96,13 @@ fun ForgotPasswordScreen(
                     value = email,
                     onValueChange = { onEmailChange(it) },
                     label = stringResource(R.string.auth_email_label),
-                    keyboardType = KeyboardType.Email
+                    keyboardType = KeyboardType.Email,
+                    isFirstLetterCapital = false
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
+                ModernButton(
                     text = if (uiState == AuthState.PasswordResetEmailSent) stringResource(R.string.reset_pass_resend_email_button_text)
                             else stringResource(R.string.reset_pass_send_email_button_text),
                     onClick = {

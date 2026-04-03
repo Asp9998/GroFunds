@@ -37,6 +37,7 @@ class FirebaseAuthRepository @Inject constructor(
     override fun authState(): Flow<AuthUser?> = _auth
 
     init { auth.addAuthStateListener(authListener) }
+
     override fun getCurrentUser(): AuthUser? = _auth.value
 
     override suspend fun signIn(email: String, password: String): Result<AuthUser> =
@@ -54,6 +55,7 @@ class FirebaseAuthRepository @Inject constructor(
     override suspend fun signUp(email: String, password: String): Result<AuthUser> =
         runCatching {
             withTimeout(15_000) {
+
                 val authResult =  auth.createUserWithEmailAndPassword(email, password)
                     .awaitIo(dp)
                 val fbUser: FirebaseUser = authResult.user ?: error("No user in AuthResult")

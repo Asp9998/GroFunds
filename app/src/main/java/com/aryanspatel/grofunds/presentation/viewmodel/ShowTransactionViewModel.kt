@@ -7,8 +7,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.core.DispatcherProvider
+import com.aryanspatel.grofunds.data.local.entity.SavingsEntity
 import com.aryanspatel.grofunds.data.local.entity.TransactionEntity
 import com.aryanspatel.grofunds.data.repository.AddEntryTransactionRepository
+import com.aryanspatel.grofunds.domain.mapper.toDomain
 import com.aryanspatel.grofunds.domain.usecase.DateConverters
 import com.aryanspatel.grofunds.domain.usecase.expenseCategoryById
 import com.aryanspatel.grofunds.domain.usecase.incomeTypeById
@@ -21,6 +23,7 @@ import com.aryanspatel.grofunds.domain.usecase.resolveIncomeTypeId
 import com.aryanspatel.grofunds.domain.usecase.resolveIncomeTypeLabel
 import com.aryanspatel.grofunds.domain.usecase.subcategoriesFor
 import com.aryanspatel.grofunds.presentation.common.model.CategorySlice
+import com.aryanspatel.grofunds.presentation.common.model.SavingState
 import com.aryanspatel.grofunds.utils.cleanAmountInput
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,6 +47,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
@@ -210,7 +214,8 @@ class ShowTransactionViewModel @Inject constructor(
                         name = meta?.name ?: "",
                         amount = ct.totalAmount,
                         color = meta?.color ?: Color.Gray,
-                        iconRes = meta?.iconRes ?: R.drawable.other
+                        iconRes = meta?.iconRes ?: R.drawable.other,
+                        emoji = meta?.emoji
                     )
                 }
             }
@@ -221,7 +226,8 @@ class ShowTransactionViewModel @Inject constructor(
 
     private val _currentTransaction = MutableStateFlow(Transaction(
         userId = "",
-        id = "",
+        transactionId = "",
+        input = "",
         kind = Kind.EXPENSE,
         amount = "0.0",
         currency = "",
@@ -231,7 +237,9 @@ class ShowTransactionViewModel @Inject constructor(
         note = "",
         date = "",
         createdAt = 0L,
-        remoteUpdatedAt = 0L
+        remoteUpdatedAt = 0L,
+        localUpdatedAt = 0L,
+        isExcluded = false,
     ))
     val currentTransaction: StateFlow<Transaction> = _currentTransaction.asStateFlow()
 
@@ -271,21 +279,22 @@ class ShowTransactionViewModel @Inject constructor(
             val now = System.currentTimeMillis()
 
             repo.saveTransaction(TransactionEntity(
-                transactionID = if(isCreateDuplicate) uuid else curr.id,
+                transactionID = if (isCreateDuplicate) uuid else curr.transactionId,
                 userId = curr.userId,
+                input = curr.input,
                 kind = curr.kind.name,
                 amount = curr.amount.toDouble(),
                 currencyCode = curr.currency,
                 categoryOrTypeID = res.categoryId,
                 subcategoryID = res.subcategoryId,
-                merchant = curr.merchant ,
+                merchant = curr.merchant,
                 note = curr.note,
                 date = dateMillis,
                 createdAtUTC = curr.createdAt,
                 remoteUpdatedAt = curr.remoteUpdatedAt,
-                localeUpdatedAt = now,
+                localUpdatedAt = now,
+                isExcluded = curr.isExcluded,
                 isDirty = true,
-                isDeleted = false,
             ))
         }
     }
@@ -298,38 +307,6 @@ class ShowTransactionViewModel @Inject constructor(
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-private fun TransactionEntity.toDomain(): Transaction{
-    val res = when(kind){
-        Kind.EXPENSE.name -> resolveExpenseCategoryLabels(categoryOrTypeID, subcategoryID)
-        else -> resolveIncomeTypeLabel(categoryOrTypeID)
-    }
-    return Transaction(
-        userId = userId,
-        id = transactionID,
-        kind = if (kind == Kind.INCOME.name) Kind.INCOME else Kind.EXPENSE,
-        amount = amount.toString(),
-        currency = currencyCode,
-        categoryOrType = res.categoryId,  // return category label
-        subcategory = res.subcategoryId,  // return subcategory label
-        merchant = merchant,
-        note = note,
-        date = DateConverters.millisToString(date),
-        createdAt = createdAtUTC,
-        remoteUpdatedAt = remoteUpdatedAt
-    )
-}
-
 
 private val APP_ZONE: ZoneId = ZoneId.systemDefault() // or use systemDefault()
 

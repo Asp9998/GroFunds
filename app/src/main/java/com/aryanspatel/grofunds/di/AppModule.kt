@@ -6,11 +6,13 @@ import com.aryanspatel.grofunds.core.DefaultDispatcherProvider
 import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.data.local.GroFundsDatabase
 import com.aryanspatel.grofunds.data.local.dao.AccountSummaryDao
+import com.aryanspatel.grofunds.data.local.dao.CategoryBudgetDao
 import com.aryanspatel.grofunds.data.local.dao.RecurringTransactionDao
+import com.aryanspatel.grofunds.data.local.dao.SavingContributionsDao
 import com.aryanspatel.grofunds.data.local.dao.SavingsDao
 import com.aryanspatel.grofunds.data.local.dao.SyncStateDao
 import com.aryanspatel.grofunds.data.local.dao.TransactionDao
-import com.aryanspatel.grofunds.data.local.dao.UserSettingsDao
+import com.aryanspatel.grofunds.data.local.dao.UserPreferencesDao
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
@@ -21,10 +23,18 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import jakarta.inject.Singleton
+import kotlinx.serialization.json.Json
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+//    // --- Firebase safe-init helper
+//    private fun ensureFirebase(context: Context) {
+//        if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+//            com.google.firebase.FirebaseApp.initializeApp(context)
+//        }
+//    }
 
     @Provides @Singleton
     fun provideDispatcherProvider(): DispatcherProvider = DefaultDispatcherProvider()
@@ -44,7 +54,7 @@ object AppModule {
 
     @Provides @Singleton
     fun provideGroFundsDatabase(@ApplicationContext context: Context): GroFundsDatabase
-     = Room.databaseBuilder(
+    = Room.databaseBuilder(
         context,
         GroFundsDatabase::class.java,
          "grofunds_database")
@@ -54,15 +64,19 @@ object AppModule {
 
     @Provides @Singleton
     fun provideTransactionDao(groFundsDatabase: GroFundsDatabase): TransactionDao
-    = groFundsDatabase.transactionDao()
+            = groFundsDatabase.transactionDao()
 
     @Provides @Singleton
     fun provideAccountSummaryDao(groFundsDatabase: GroFundsDatabase): AccountSummaryDao
-    = groFundsDatabase.accountSummaryDao()
+            = groFundsDatabase.accountSummaryDao()
 
     @Provides @Singleton
     fun provideSavingsDao(groFundsDatabase: GroFundsDatabase): SavingsDao
             = groFundsDatabase.savingDao()
+
+    @Provides @Singleton
+    fun provideSavingContributionsDao(groFundsDatabase: GroFundsDatabase): SavingContributionsDao
+            = groFundsDatabase.savingContributionDao()
 
     @Provides @Singleton
     fun provideRecurringTransactionDao(groFundsDatabase: GroFundsDatabase): RecurringTransactionDao
@@ -73,10 +87,16 @@ object AppModule {
             = groFundsDatabase.syncStateDao()
 
     @Provides @Singleton
-    fun provideUserSettingsDao(groFundsDatabase: GroFundsDatabase): UserSettingsDao
-            = groFundsDatabase.userSettingsDao()
+    fun provideUserSettingsDao(groFundsDatabase: GroFundsDatabase): UserPreferencesDao
+            = groFundsDatabase.userPreferencesDao()
 
+    @Provides @Singleton
+    fun provideCategoryBudgetDao(groFundsDatabase: GroFundsDatabase): CategoryBudgetDao
+            = groFundsDatabase.categoryBudgetDao()
 
-
+    @Provides @Singleton
+    fun provideJson(): Json = Json {
+        ignoreUnknownKeys = true
+    }
 
 }

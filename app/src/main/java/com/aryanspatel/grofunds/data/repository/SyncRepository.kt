@@ -8,7 +8,7 @@ import com.aryanspatel.grofunds.data.local.dao.RecurringTransactionDao
 import com.aryanspatel.grofunds.data.local.dao.SavingsDao
 import com.aryanspatel.grofunds.data.local.dao.SyncStateDao
 import com.aryanspatel.grofunds.data.local.dao.TransactionDao
-import com.aryanspatel.grofunds.data.local.dao.UserSettingsDao
+import com.aryanspatel.grofunds.data.local.dao.UserPreferencesDao
 import com.aryanspatel.grofunds.data.local.entity.AccountSummaryEntity
 import com.aryanspatel.grofunds.data.local.entity.SyncStateEntity
 import com.aryanspatel.grofunds.data.mapper.toEntity
@@ -18,14 +18,11 @@ import com.aryanspatel.grofunds.data.remote.model.TransactionDoc
 import com.aryanspatel.grofunds.domain.usecase.DateConverters
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions.merge
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.FirebaseFirestoreException.Code
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.util.Date
@@ -38,14 +35,13 @@ class SyncRepository @Inject constructor(
     private val savingsDao: SavingsDao,
     private val recurringTransactionDao: RecurringTransactionDao,
     private val accountSummaryDao: AccountSummaryDao,
-    private val userSettingsDao: UserSettingsDao,
+    private val userSettingsDao: UserPreferencesDao,
     private val syncStateDao: SyncStateDao,
     private val dp: DispatcherProvider,
     private val db: FirebaseFirestore
 ){
 
-    suspend fun pushDirtyBatch(uid: String) = withContext(dp.iO){
-
+    suspend fun pushDirtyBatch(uid: String)  = withContext(dp.iO){
         // push Transactions (updated, but not deleted)
         pushUpdatedTransactions(uid = uid)
 
@@ -67,9 +63,10 @@ class SyncRepository @Inject constructor(
 
 
     suspend fun pullRemoteUpdates(uid: String) = withContext(dp.iO) {
-
         // pull Transactions
         pullTransactions(uid = uid)
+
+        Log.d("SginInException", "pullRemoteUpdates:Successfully fetched transactions ")
 
         // pull savings
 
@@ -83,7 +80,12 @@ class SyncRepository @Inject constructor(
 
 
     private suspend fun pushDeletedTransactions(uid: String) = withContext(dp.iO) {
+        Log.d("SignOutException", "pushDeletedTransactions: inside delete Transaction")
+
         val softDeleted = transactionDao.getSoftDeletedTransactions(userId = uid)
+        Log.d("SignOutException", "pushDeletedTransactions: $uid")
+        Log.d("SignOutException", "pushDeletedTransactions: ${softDeleted.isEmpty()}")
+
         if(softDeleted.isEmpty()) return@withContext
 
         val ids = softDeleted.map { it.transactionID }
@@ -107,13 +109,14 @@ class SyncRepository @Inject constructor(
             }.isSuccess
 
             if(success){
+                Log.d("SignOutException", "pushDeletedTransactions: deleted Successfully")
                 transactionDao.deleteTransaction(userId = uid, transactionIds = chunk)
             }else{
-                Log.d("Deletion failed", "pushDeletedTransactions: failed")
+
+                Log.d("SignOutException", "pushDeletedTransactions: delete failed")
             }
         }
     }
-
 
     private suspend fun pushUpdatedTransactions(uid: String) = withContext(dp.iO) {
         val listOfTransactions = transactionDao.getDirty(userId = uid)
@@ -143,7 +146,7 @@ class SyncRepository @Inject constructor(
                     note = curr.note,
                     date = DateConverters.millisToTimestamp(curr.date),
                     status = "saved",
-                    updatedAt = FieldValue.serverTimestamp()
+                    updatedAt = null
                 )
 
 //                val updateExpense = mapOf(
@@ -190,6 +193,7 @@ class SyncRepository @Inject constructor(
         }
 
     private suspend fun pullTransactions(uid: String) = withContext(dp.iO) {
+        Log.d("PullTestingDebugging", "pullTransactions: Inside pull worker")
          val docRef = db.collection("users")
              .document(uid)
              .collection("transactions")
@@ -207,11 +211,21 @@ class SyncRepository @Inject constructor(
 
              if (lastDoc != null) q = q.startAfter(lastDoc)
 
+             Log.d("PullTestingDebugging", "pullTransactions: before getting snap")
+
+
              // Page fetch with retry + timeout
              val snap = ioRetry(maxAttempts = 2, initialDelayMs = 300, maxElapsedMs = 8_000) {
                  withTimeout(6_000) { q.get().awaitIo(dp) }
              }
+
+             Log.d("PullTestingDebugging", "pullTransactions: after pull worker")
+             Log.d("PullTestingDebugging", "pullTransactions: ${snap.documents}")
+
              if (snap.isEmpty) break
+
+             Log.d("PullTestingDebugging", "pullTransactions: snap is not empty}")
+
 
              for (doc in snap.documents) {
                  val updatedAt = doc.getTimestamp("updatedAt")?.toDate()?.time
@@ -271,7 +285,7 @@ class SyncRepository @Inject constructor(
             totalIncome = summary.totalIncome,
             totalSaving = summary.totalSaving,
             availableCash = summary.availableCash,
-            updatedAt = summary.updatedAt
+            updatedAt = summary.localeUpdatedAt
         )
 
         ioRetry(maxAttempts = 3, initialDelayMs = 250, maxElapsedMs = 20_000) {
@@ -282,6 +296,7 @@ class SyncRepository @Inject constructor(
     }
 
     private suspend fun pullAccountSummary(uid: String) = withContext(dp.iO){
+        Log.d("SginInException", "pullAccountSummary: into pull account summary")
         val local = accountSummaryDao.getSummary(uid)
 
         val docRef = db.collection("users")
@@ -296,10 +311,13 @@ class SyncRepository @Inject constructor(
             }
         }.getOrElse { return@withContext }
 
+
+        Log.d("SginInException", "pullAccountSummary: $snap")
+
         if(!snap.exists()) return@withContext
 
         val remoteUpdatedAt = snap.getLong("updatedAt") ?: 0L
-        val localUpdatedAt  = local?.updatedAt ?: 0L
+        val localUpdatedAt  = local?.localeUpdatedAt ?: 0L
 
         if (remoteUpdatedAt <= localUpdatedAt) return@withContext
 
@@ -309,8 +327,12 @@ class SyncRepository @Inject constructor(
             totalExpense = snap.getDouble("totalExpense") ?: 0.0,
             totalIncome = snap.getDouble("totalIncome") ?: 0.0,
             totalSaving = snap.getDouble("totalSaving") ?: 0.0,
-            updatedAt = remoteUpdatedAt
+            localeUpdatedAt = remoteUpdatedAt,
+            remoteUpdatedAt = remoteUpdatedAt,
+            isDirty = false
         )
+
+        Log.d("SginInException", "pullAccountSummary: $entity")
 
         accountSummaryDao.insertAccountIfAbsent(entity)
 

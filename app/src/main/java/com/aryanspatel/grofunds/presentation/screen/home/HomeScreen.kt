@@ -7,25 +7,31 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -40,7 +46,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aryanspatel.grofunds.presentation.common.navigation.Destinations
 import com.aryanspatel.grofunds.presentation.screen.addEntry.AddExpenseScreen
@@ -53,7 +59,6 @@ import java.util.*
 fun HomeScreen(
     navController: NavController,
     viewModel: HomeScreenViewModel = hiltViewModel(),
-    onLogout: () -> Unit
 ) {
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,17 +69,50 @@ fun HomeScreen(
     val availableCase = uiState.availableCase
 
     var showAddEntryScreen by rememberSaveable {mutableStateOf(false)}
-
-
-
-
+    var showOnboarding by rememberSaveable {mutableStateOf(false)}
 
     // Sample data
 
     val quickCards = listOf(
-        QuickCard(Destinations.IncomeScreen.name, "Incomes",totalIncome , Icons.AutoMirrored.Filled.TrendingUp, Color(0xFF10B981)),
-        QuickCard(Destinations.ExpenseScreen.name, "Expenses", totalExpense, Icons.Default.AttachMoney, Color(0xFFEF4444)),
-        QuickCard(Destinations.SavingScreen.name, "Saving Goals", totalSaving, Icons.Default.TaskAlt, Color(0xFF8B5CF6)),
+        QuickCard(
+            type = Destinations.IncomeScreen.name,
+            title = "Incomes",
+            icon = Icons.AutoMirrored.Filled.TrendingUp,
+            iconColor = MaterialTheme.colorScheme.surfaceTint,
+            iconBackground = MaterialTheme.colorScheme.surfaceContainer,
+            background = Brush.linearGradient(listOf(
+                MaterialTheme.colorScheme.secondaryContainer,
+                MaterialTheme.colorScheme.primaryContainer
+            )),
+            borderColor = MaterialTheme.colorScheme.onBackground
+        ),
+        QuickCard(
+            type = Destinations.ExpenseScreen.name,
+            title = "Expenses",
+            icon = Icons.Default.AttachMoney,
+            iconColor = MaterialTheme.colorScheme.surfaceDim,
+            iconBackground = MaterialTheme.colorScheme.onSurfaceVariant,
+            background = Brush.linearGradient(listOf(
+                MaterialTheme.colorScheme.onSecondaryContainer,
+                MaterialTheme.colorScheme.onPrimaryContainer
+            )),
+            borderColor = MaterialTheme.colorScheme.onSurface
+
+        ),
+        QuickCard(
+            type = Destinations.SavingScreen.name,
+            title = "Saving Goals",
+            icon = Icons.Default.TaskAlt,
+            iconColor = MaterialTheme.colorScheme.surfaceBright,
+            iconBackground = MaterialTheme.colorScheme.onTertiaryFixed,
+            background = Brush.linearGradient(listOf(
+                MaterialTheme.colorScheme.onTertiaryContainer,
+                MaterialTheme.colorScheme.tertiaryContainer
+
+            )),
+            borderColor = MaterialTheme.colorScheme.onTertiary
+
+        )
     )
 
     Box(
@@ -131,18 +169,17 @@ fun HomeScreen(
                         totalIncome = totalIncome,
                         totalExpenses = totalExpense,
                         scale = scale,
-            //               summaryHeight = summaryHeightPx,
-                        onSummaryMeasured = { height -> summaryHeightPx = height } // capture summary card height
-                        ){
-                        navController.navigate(route = Destinations.ProfileScreen.name)
-                    }
+                        onSummaryMeasured = { height -> summaryHeightPx = height },// capture summary card height
+                        onProfileClick = {
+                            navController.navigate(route = Destinations.ProfileScreen.name)
+                        })
 
 
                     Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(state = scrollState)
-                                .padding(bottom = 100.dp)
+                                .padding()
                         ) {
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -154,6 +191,8 @@ fun HomeScreen(
                                     navController.navigate(route = cardType)
                                 },
                             )
+
+                        HomeCoreScreen()
                     }
                 }
             }
@@ -185,6 +224,7 @@ fun HeaderSection(
     val currentDate = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date())
     val currencyFormat = NumberFormat.getCurrencyInstance()
 
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -213,8 +253,12 @@ fun HeaderSection(
             Box(modifier = Modifier.fillMaxWidth()){
 
                 IconButton(onClick = onProfileClick,
-                    modifier = Modifier.align(Alignment.TopEnd)) {
-                    Icon(imageVector = Icons.Default.PersonOutline, contentDescription = "Profile icon")
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Icon(imageVector = Icons.Default.PersonOutline,
+                        contentDescription = "Profile icon",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
 
                 Column {
@@ -278,7 +322,7 @@ fun HeaderSection(
                                 }
                             },
 
-                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.2f)),
+                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.2f)),
                         shape = shape,
                     ) {
 
@@ -294,14 +338,14 @@ fun HeaderSection(
                                     text = "Income",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color.White.copy(0.8f)
+                                        color = Color.White.copy(0.7f)
                                     )
                                 )
                                 Text(
                                     text = currencyFormat.format(totalIncome),
                                     style = MaterialTheme.typography.titleLarge.copy(
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFF1E8A22),
+                                        color = MaterialTheme.colorScheme.primaryFixed,
                                     )
                                 )
                             }
@@ -319,7 +363,7 @@ fun HeaderSection(
                                     text = "Expenses",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color.White.copy(0.8f)
+                                        color = Color.White.copy(0.7f)
                                     )
                                 )
                                 Text(
@@ -367,10 +411,12 @@ fun QuickCard(
 
     Card(
         modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(card.background)
+            .border(1.dp, card.borderColor, RoundedCornerShape(16.dp))
             .width(140.dp)
-            .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
@@ -382,17 +428,32 @@ fun QuickCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = card.icon,
-                    contentDescription = card.title,
-                    tint = card.color,
-                    modifier = Modifier.size(24.dp)
-                )
+//                Icon(
+//                    imageVector = card.icon,
+//                    contentDescription = card.title,
+//                    tint = card.iconColor,
+//                    modifier = Modifier.size(24.dp)
+//                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(card.iconBackground),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = card.icon,
+                        contentDescription = null,
+                        tint = card.iconColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                     contentDescription = "Expand",
                     modifier = Modifier.size(16.dp),
-                    tint = Color.Gray
+                    tint = MaterialTheme.colorScheme.onSecondary
                 )
             }
 
@@ -400,18 +461,11 @@ fun QuickCard(
 
             Text(
                 text = card.title,
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
 
-            if (card.type != "tips") {
-                Text(
-                    text = currencyFormat.format(card.amount),
-                    color = card.color,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            )
         }
     }
 }
@@ -429,15 +483,18 @@ fun FloatingActionButtonSection(
         FloatingActionButton(
             onClick = { onAddEntryClick() },
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .shadow(8.dp, CircleShape),
-            containerColor =MaterialTheme.colorScheme.primaryContainer,
-            contentColor = Color.White
+//                .clip(RoundedCornerShape(16.dp))
+                .align(Alignment.BottomEnd),
+            containerColor =MaterialTheme.colorScheme.primaryFixed,
+            contentColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+//            elevation = FloatingActionButtonDefaults.elevation(6.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Add",
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(32.dp)
+
             )
         }
     }
@@ -445,23 +502,20 @@ fun FloatingActionButtonSection(
 
 
 
-data class Expense(
-    val id: Int,
-    val category: String,
-    val amount: Double,
-    val date: String
-)
-
-data class ExpenseBreakdown(
-    val category: String,
-    val amount: Double,
-    val color: Color
-)
+//data class Expense(
+//    val id: Int,
+//    val category: String,
+//    val amount: Double,
+//    val date: String
+//)
 
 data class QuickCard(
     val type: String,
     val title: String,
-    val amount: Double,
     val icon: ImageVector,
-    val color: Color
+    val iconColor: Color,
+    val iconBackground: Color,
+    val background: Brush,
+    val borderColor: Color
+
 )

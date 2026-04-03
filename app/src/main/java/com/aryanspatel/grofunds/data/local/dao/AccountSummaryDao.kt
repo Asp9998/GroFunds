@@ -28,7 +28,7 @@ interface AccountSummaryDao {
                 total_expense = total_expense + :expenseDelta,
                 total_income = total_income + :incomeDelta,
                 total_saving = total_saving + :savingDelta,
-                updated_at = :updatedAt
+                remote_updated_at = :updatedAt
             WHERE user_id = :userId 
         """)
     // add expense,
@@ -45,7 +45,7 @@ interface AccountSummaryDao {
             UPDATE accountSummaryEntity
             SET 
                 total_income = total_income + :income,
-                updated_at = :updatedAt
+                remote_updated_at = :updatedAt
             WHERE user_id = :userId 
         """)
     suspend fun updateIncome(userId: String, income: Double, updatedAt: Long)
@@ -56,7 +56,7 @@ interface AccountSummaryDao {
             UPDATE accountSummaryEntity
             SET 
                 total_expense = total_expense + :expense,
-                updated_at = :updatedAt
+                remote_updated_at = :updatedAt
             WHERE user_id = :userId 
         """)
     suspend fun updateExpense(userId: String, expense: Double, updatedAt: Long)
@@ -66,7 +66,7 @@ interface AccountSummaryDao {
             UPDATE accountSummaryEntity
             SET 
                 total_saving = total_saving + :saving,
-                updated_at = :updatedAt
+                remote_updated_at = :updatedAt
             WHERE user_id = :userId 
         """)
     suspend fun updateSaving(userId: String, saving: Double, updatedAt: Long)

@@ -13,76 +13,101 @@ import com.aryanspatel.grofunds.ui.theme.ThemeColor
 
 private val DarkColorScheme = darkColorScheme(
 
-    primary = ThemeColor.Night.primary,                      // Main brand color
-    secondary = ThemeColor.Night.secondary,                  // second brand color
+    background = ThemeColor.Night.background,
+    primaryFixed = ThemeColor.Night.brand,
+    surface = ThemeColor.Night.surface,
+    surfaceVariant = ThemeColor.Night.surfaceVariant,
+
+    primary = ThemeColor.Night.primary,
+    secondary = ThemeColor.Night.secondary,
     tertiary = ThemeColor.Night.final,
 
-    onPrimary = ThemeColor.Night.primaryText,                // Text on primary buttons
+    onPrimary = ThemeColor.Night.primaryText,
+    onSecondary = ThemeColor.Night.descriptionText,
 
-    onSecondary = ThemeColor.Night.descriptionText,         // Text/icons on secondary
-
-    background = ThemeColor.Night.background,               // App background
-//    onBackground = ThemeColor.Day.titleText,              // Text on background
-//
-    surface = ThemeColor.Night.surface,                     // Card, surfaces
-//    onSurface = ThemeColor.Day.titleText,                 // Text/icons on surface
-//
-    surfaceVariant = ThemeColor.Night.surfaceVariant,       // Alternative surface (chips, etc.)
-//    onSurfaceVariant = ThemeColor.Day.bodyText,
 
     error = ThemeColor.Night.error,
 
-    primaryContainer = ThemeColor.Night.floatingActionButton,
-    secondaryContainer = ThemeColor.Night.alternativeCardColor,
+
+    // green variant
+    surfaceTint = ThemeColor.Night.mainIcon,
+    onBackground = ThemeColor.Night.mainBorder,
+    primaryContainer = ThemeColor.Night.mainContainerBackground1,
+    secondaryContainer = ThemeColor.Night.mainContainerBackground2,
+    surfaceContainer = ThemeColor.Night.mainContainerSurface,
+
+    // red variant
+    surfaceDim = ThemeColor.Night.redIcon,
+    onSurface = ThemeColor.Night.redBorder,
+    onPrimaryContainer = ThemeColor.Night.redContainerBackground1,
+    onSecondaryContainer = ThemeColor.Night.redContainerBackground2,
+    onSurfaceVariant = ThemeColor.Night.redContainerSurface ,
+
+    // blue variant
+    onPrimaryFixed = ThemeColor.Night.blueBrand,
+    surfaceBright = ThemeColor.Night.blueIcon,
+    onTertiary = ThemeColor.Night.blueBorder,
+    tertiaryContainer = ThemeColor.Night.blueContainerBackground1,
+    onTertiaryContainer = ThemeColor.Night.blueContainerBackground2,
+    onTertiaryFixed = ThemeColor.Night.blueContainerSurface,
 
     surfaceContainerLow = ThemeColor.Night.incomeScreenCont,
     surfaceContainerLowest = ThemeColor.Night.expenseScreenCont,
     surfaceContainerHigh = ThemeColor.Night.savingsScreenCont,
 
-    surfaceContainer = ThemeColor.Night.menuOptionsBackground
-
+    // Regular container
+    inverseSurface = ThemeColor.Night.childContainerBackground,
+    inverseOnSurface = ThemeColor.Night.childContainerBorder
 )
 
 private val LightColorScheme = lightColorScheme(
 
-    primary = ThemeColor.Day.primary,                      // Main brand color
-    secondary = ThemeColor.Day.secondary,                  // secondary brand color
+    primaryFixed = ThemeColor.Day.brand,
+
+    primary = ThemeColor.Day.primary,
+    secondary = ThemeColor.Day.secondary,
     tertiary = ThemeColor.Day.final,
 
-    onPrimary = ThemeColor.Day.primaryText,                  // Text on primary buttons
-    onSecondary = ThemeColor.Day.descriptionText,           // Text/icons on secondary
-//
-//    tertiary = ThemeColor.Day.selectedIcon,               // Accent (e.g. selected icon)
-//    onTertiary = ThemeColor.Day.fadeIcon,                 // Disabled/unselected icon
-//
-    background = ThemeColor.Day.background,               // App background
-//    onBackground = ThemeColor.Day.titleText,              // Text on background
-//
+    onPrimary = ThemeColor.Day.primaryText,
+    onSecondary = ThemeColor.Day.descriptionText,
+
+    background = ThemeColor.Day.background,
     surface = ThemeColor.Day.surface,
     surfaceVariant = ThemeColor.Day.surfaceVariant,
 
-    primaryContainer = ThemeColor.Day.floatingActionButton,
-    secondaryContainer = ThemeColor.Day.alternativeCardColor,
+
+    // main green variant
+    surfaceTint = ThemeColor.Day.mainIcon,
+    onBackground = ThemeColor.Day.mainBorder,
+    primaryContainer = ThemeColor.Day.mainContainerBackground1,
+    secondaryContainer = ThemeColor.Day.mainContainerBackground2,
+    surfaceContainer = ThemeColor.Day.mainContainerSurface,
+
+    // red variant
+    surfaceDim = ThemeColor.Day.redIcon,
+    onSurface = ThemeColor.Day.redBorder,
+    onPrimaryContainer = ThemeColor.Day.redContainerBackground1,
+    onSecondaryContainer = ThemeColor.Day.redContainerBackground2,
+    onSurfaceVariant = ThemeColor.Day.redContainerSurface,
+
+    // blue variant
+    onPrimaryFixed = ThemeColor.Day.blueBrand,
+    surfaceBright = ThemeColor.Day.blueIcon,
+    onTertiary = ThemeColor.Day.blueBorder,
+    tertiaryContainer = ThemeColor.Day.blueContainerBackground1,
+    onTertiaryContainer = ThemeColor.Day.blueContainerBackground2,
+    onTertiaryFixed = ThemeColor.Day.blueContainerSurface,
 
     surfaceContainerLow = ThemeColor.Day.incomeScreenCont,
     surfaceContainerLowest = ThemeColor.Day.expenseScreenCont,
     surfaceContainerHigh = ThemeColor.Day.savingsScreenCont,
-    surfaceContainer = ThemeColor.Day.menuOptionsBackground,
+
+    // Regular container
+    inverseSurface = ThemeColor.Day.childContainerBackground,
+    inverseOnSurface = ThemeColor.Day.childContainerBorder,
 
 
-
-
-
-
-//    secondaryContainer = ThemeColor.Day.goalCardChild,    // Goal card sub-items
-//    tertiaryContainer = ThemeColor.Day.arcBackground,     // Progress arcs
-//
-    error = ThemeColor.Day.error,                  // Error / High priority
-//    onError = ThemeColor.Day.bodyText,
-//
-//    surfaceTint = ThemeColor.Day.goalProgressBar,                 // Tint for progress bars
-//    inverseSurface = ThemeColor.Day.goalAnimationBackground,      // Animated backgrounds
-
+    error = ThemeColor.Day.error
 )
 
 @Composable

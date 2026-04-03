@@ -2,6 +2,7 @@ package com.aryanspatel.grofunds.presentation.screen.showTransaction
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -13,7 +14,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
-import com.aryanspatel.grofunds.presentation.screen.addEntry.BottomActonButton
+import com.aryanspatel.grofunds.presentation.screen.addEntry.BottomActionButton
 import com.aryanspatel.grofunds.presentation.screen.addEntry.EditableDetailsSection
 import com.aryanspatel.grofunds.presentation.viewmodel.ShowTransactionViewModel
 
@@ -33,7 +34,7 @@ fun EditDuplicateTransaction(
         onDismiss = onDismiss
     ) {
 
-        Column (modifier = Modifier.padding(vertical = 12.dp)
+        Column (modifier = Modifier.fillMaxSize().padding(vertical = 12.dp)
             .verticalScroll(rememberScrollState())){
             EditableDetailsSection(
                 state = transaction,
@@ -52,7 +53,7 @@ fun EditDuplicateTransaction(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            BottomActonButton(
+            BottomActionButton(
                 isParsed = true ,
                 enabled = true,
                 onResetClick = {onDismiss()} ,

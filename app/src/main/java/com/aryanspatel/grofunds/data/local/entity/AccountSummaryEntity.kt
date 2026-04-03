@@ -22,8 +22,16 @@ data class AccountSummaryEntity(
     @ColumnInfo("total_saving")
     val totalSaving: Double = 0.0,
 
-    @ColumnInfo("updated_at")
-    val updatedAt: Long,
+    @ColumnInfo("remote_updated_at")
+    val remoteUpdatedAt: Long,
+
+    @ColumnInfo("locale_updated_at")
+    val localeUpdatedAt: Long,
+
+    @ColumnInfo("is_dirty")
+    val isDirty: Boolean = true,
+
+
 ){
     val availableCash: Double get() = totalIncome - totalExpense - totalSaving
 }

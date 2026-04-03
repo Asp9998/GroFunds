@@ -1,6 +1,7 @@
 package com.aryanspatel.grofunds.data.sync
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.aryanspatel.grofunds.data.local.GroFundsDatabase
@@ -21,6 +22,7 @@ class SyncBootstrapper @Inject constructor(
     private val scope = ProcessLifecycleOwner.get().lifecycleScope
 
     fun start(){
+        Log.d("PullTestingDebugging", "pullTransactions: inside start")
         scope.launch {
             session.userIdFlow.collect { uid ->
                 if(uid != null){
@@ -30,7 +32,7 @@ class SyncBootstrapper @Inject constructor(
                 }else{
                     // Signed out
                     orchestrator.stopPeriodic()
-                    db.clearAllTables()
+//                    db.clearAllTables()
                 }
             }
         }

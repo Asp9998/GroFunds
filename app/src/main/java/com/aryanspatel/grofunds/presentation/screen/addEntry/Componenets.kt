@@ -31,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,14 +53,20 @@ import com.aryanspatel.grofunds.domain.model.EntryKind
 fun ModernCard(
     modifier: Modifier = Modifier,
     gradient: Brush? = null,
+    borderColor: Color? = null,
     cornerRadius: Dp = 20.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val backgroundColor = gradient?.let { Color.Transparent } ?: MaterialTheme.colorScheme.surface
+    val backgroundColor = gradient?.let { Color.Transparent } ?: MaterialTheme.colorScheme.inverseSurface
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (gradient != null) Modifier.background(gradient, RoundedCornerShape(cornerRadius)) else Modifier),
+            .border(1.dp,
+                borderColor ?: MaterialTheme.colorScheme.inverseOnSurface,
+                RoundedCornerShape(cornerRadius))
+            .then(
+                if (gradient != null) Modifier.background(gradient, RoundedCornerShape(cornerRadius))
+                else Modifier),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(pressedElevation = 12.dp)
@@ -82,7 +87,7 @@ fun ModernDropdownTextField(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 16.dp,
     droppedMenuCornerRadius: Dp = 8.dp,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant
+    backgroundColor: Color = MaterialTheme.colorScheme.surface
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
@@ -90,17 +95,22 @@ fun ModernDropdownTextField(
             value = value,
             onValueChange = {},
             readOnly = true,
-            label = { Text(label) },
+            label = { Text(label, color = MaterialTheme.colorScheme.onSecondary) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = modifier
                 .menuAnchor(MenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
             shape = RoundedCornerShape(cornerRadius),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedTrailingIconColor = MaterialTheme.colorScheme.onSecondary,
+                unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSecondary,
+                focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                focusedBorderColor = MaterialTheme.colorScheme.primaryFixed,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
         )
         ExposedDropdownMenu(
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(droppedMenuCornerRadius),
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -110,7 +120,11 @@ fun ModernDropdownTextField(
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option, style = MaterialTheme.typography.bodyMedium) },
+                    text = {
+                        Text(option,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        ) },
                     onClick = { onValueChange(option); expanded = false },
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                 )

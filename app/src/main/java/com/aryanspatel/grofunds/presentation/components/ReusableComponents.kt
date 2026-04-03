@@ -1,12 +1,12 @@
 package com.aryanspatel.grofunds.presentation.components
 
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -31,13 +31,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -46,6 +47,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -56,6 +58,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -65,6 +68,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -77,31 +81,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import com.aryanspatel.grofunds.domain.usecase.DateConverters
 import com.aryanspatel.grofunds.domain.usecase.DateConverters.formatUiDate
 import com.aryanspatel.grofunds.domain.usecase.DateConverters.localDateToPickerMillis
 import com.aryanspatel.grofunds.domain.usecase.DateConverters.pickerMillisToLocalDate
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.time.Instant
-import java.time.LocalDate
 import java.time.Year
 import java.time.YearMonth
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 /**
  * A reusable overlay Screen with slide + fade animation.
@@ -109,7 +108,6 @@ import java.util.Locale
 @Composable
 internal fun HorizontalSlidingOverlay(
     modifier: Modifier = Modifier,
-    isFullScreen: Boolean = false,  // give screen header horizontal padding, when parent function want to utilize the whole screen , and don't give horizontal padding from modifier.
     title: String,
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
@@ -213,8 +211,8 @@ internal fun HorizontalSlidingOverlayHeader(
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowBackIosNew,
-                contentDescription = "Back"
-            )
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onPrimary)
         }
 
         Text(
@@ -222,8 +220,7 @@ internal fun HorizontalSlidingOverlayHeader(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center),
-            color = MaterialTheme.colorScheme.onPrimary
-        )
+            color = MaterialTheme.colorScheme.onPrimary)
     }
 }
 
@@ -231,15 +228,17 @@ internal fun HorizontalSlidingOverlayHeader(
  * Reusable Outline and Regular button in one
  */
 @Composable
-internal fun Button(
+internal fun ModernButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isOutlined: Boolean = false,
     cornerRadius: Dp = 16.dp,
-    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    containerColor: Color = MaterialTheme.colorScheme.primaryFixed,
+    disabledContainerColor: Color = MaterialTheme.colorScheme.primaryFixed.copy(0.3f),
     contentColor: Color = Color.White,
+    disabledContentColor: Color = Color.White.copy(0.6f),
     elevation: Dp = 0.dp
 ) {
     if (isOutlined) {
@@ -250,7 +249,7 @@ internal fun Button(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = backgroundColor
+                contentColor = containerColor
             ),
             border =  ButtonDefaults.outlinedButtonBorder(enabled).copy(1.dp),
             shape = RoundedCornerShape(cornerRadius)
@@ -271,8 +270,10 @@ internal fun Button(
                 .height(56.dp),
             shape = RoundedCornerShape(cornerRadius),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
-                contentColor = contentColor
+                containerColor = containerColor,
+                disabledContainerColor = disabledContainerColor,
+                contentColor = contentColor,
+                disabledContentColor = disabledContentColor
             ),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = elevation)
         ) {
@@ -301,7 +302,7 @@ internal fun ModernIconButton(
         enabled = enabled
     ) {
         Icon(imageVector = icon,
-            contentDescription = "Previous year",
+            contentDescription = null,
             tint = if (enabled) enabledIconColor
                 else disabledIconColor
         )
@@ -327,10 +328,11 @@ internal fun ModernTextField(
     imeAction: ImeAction = ImeAction.Done,
     keyboardActions: KeyboardActions = KeyboardActions {},
     cornerRadius: Dp = 16.dp,
-    focusedBorderColor: Color = MaterialTheme.colorScheme.primary,
+    focusedBorderColor: Color = MaterialTheme.colorScheme.primaryFixed,
     unfocusedBorderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-    focusedLabelColor: Color = MaterialTheme.colorScheme.primary,
-    isPassword: Boolean = false
+    focusedLabelColor: Color = MaterialTheme.colorScheme.primaryFixed,
+    isPassword: Boolean = false,
+    isFirstLetterCapital: Boolean = true
 ) {
 
     var passwordVisible by remember { mutableStateOf(false) }
@@ -338,23 +340,29 @@ internal fun ModernTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = if (label.isNotEmpty()) ({ Text(label) }) else null,
-        placeholder = if (placeholder.isNotEmpty()) ({ Text(placeholder) }) else null,
-        leadingIcon = leadingIcon?.let { { Icon(it, null) } },
+        label = if (label.isNotEmpty()) ({ Text(label, color = MaterialTheme.colorScheme.onSecondary) }) else null,
+        placeholder = if (placeholder.isNotEmpty()) ({ Text(placeholder, color = MaterialTheme.colorScheme.onSecondary) }) else null,
+        leadingIcon = leadingIcon?.let { { Icon(it, null, tint = MaterialTheme.colorScheme.onPrimary ) } },
         suffix = if (suffix.isNotEmpty()) ({
             Text(
                 suffix,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSecondary
             )
         }) else null,
         minLines = minLines,
         maxLines = maxLines,
-        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardOptions = KeyboardOptions.Default.copy(
+            capitalization = if(isFirstLetterCapital) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
+            keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = keyboardActions,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(cornerRadius),
         colors = OutlinedTextFieldDefaults.colors(
+
+            cursorColor = MaterialTheme.colorScheme.onSecondary,
+            focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+            unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
             focusedBorderColor = focusedBorderColor,
             unfocusedBorderColor = unfocusedBorderColor,
             focusedLabelColor = focusedLabelColor
@@ -366,7 +374,7 @@ internal fun ModernTextField(
                     Icon(
                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                         contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.onSecondary
                     )
                 }
             }
@@ -398,7 +406,14 @@ internal fun ModernDropDownMenuItem(
             trailingIcon = { if(isTrailingIcon) {
                 Checkbox(
                     checked = checked,
-                    onCheckedChange = onCheckedChange
+                    onCheckedChange = onCheckedChange,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledCheckedColor = MaterialTheme.colorScheme.onSecondary,
+                        uncheckedColor = MaterialTheme.colorScheme.onSecondary,
+                        checkmarkColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledUncheckedColor = MaterialTheme.colorScheme.onSecondary
+                    )
                 )}
             }
         )
@@ -406,9 +421,31 @@ internal fun ModernDropDownMenuItem(
 }
 
 @Composable
-internal fun DeleteConfirmationDialog(
+internal fun ModernLinearProgressIndicator(
+    currentValue: Int,
+    totalValue: Int,
+    color: Color = MaterialTheme.colorScheme.primaryFixed,
+    trackColor: Color = MaterialTheme.colorScheme.onPrimary.copy(0.1f),
+    isGapped: Boolean = true
+){
+    LinearProgressIndicator(
+        progress = { (currentValue + 0f) / totalValue },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp)),
+        color = color,
+        trackColor = trackColor,
+        strokeCap = if(isGapped) StrokeCap.Round else StrokeCap.Square,
+        gapSize = if(isGapped) 3.dp else 0.dp
+    )
+}
+
+@Composable
+internal fun ModernConfirmationDialog(
     title: String,
     text: String,
+    confirmButtonLabel: String,
+    confirmButtonColor: Color = MaterialTheme.colorScheme.primaryFixed,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 
@@ -416,15 +453,15 @@ internal fun DeleteConfirmationDialog(
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
+        title = { Text(title, color = MaterialTheme.colorScheme.onPrimary) },
+        text = { Text(text, color = MaterialTheme.colorScheme.onSecondary) },
         confirmButton = {
             TextButton(onClick = { onConfirm()}) {
-                Text("Delete", color = MaterialTheme.colorScheme.error)
+                Text(confirmButtonLabel, color = confirmButtonColor)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.onPrimary) }
         }
     )
 }
@@ -442,13 +479,46 @@ internal fun SnackBarMessage(
     SnackbarHost(
         hostState = snackbarHostState,
         modifier = modifier
+            .zIndex(5f)
             .padding(16.dp)
             .navigationBarsPadding() // avoid system bars
     ) { data ->
         Snackbar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             snackbarData = data,
             shape = RoundedCornerShape(12.dp),
         )
+    }
+}
+
+@Composable
+internal fun ModernIconBadge(
+    icon: ImageVector? = null,
+    text: String? = null,
+    background: Color,
+    iconTint: Color,
+){
+    Column(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(background),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if(text != null){
+            Text(text = text,
+                color = iconTint,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold)
+        }else if(icon != null){
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(22.dp))
+        }
     }
 }
 
@@ -475,11 +545,13 @@ internal fun DatePickerField(
             value = value,
             onValueChange = {},
             readOnly = true,
-            label = { Text(label) },
+            label = { Text(label, color = MaterialTheme.colorScheme.onSecondary) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            trailingIcon = { TextButton(onClick = { show = true }) { Text("Pick") } },
+            trailingIcon = { TextButton(onClick = { show = true }) { Text("Pick", color = MaterialTheme.colorScheme.onSecondary) } },
             colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                 focusedLabelColor = MaterialTheme.colorScheme.primary
@@ -487,6 +559,7 @@ internal fun DatePickerField(
         )
     }
     if (show) {
+
         DatePickerDialog(
             colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
             onDismissRequest = { show = false },
@@ -496,11 +569,41 @@ internal fun DatePickerField(
                         onValueChange(formatUiDate(pickerMillisToLocalDate(ms)))
                     }
                     show = false
-                }) { Text("OK") }
+                                     },
+                    colors = ButtonDefaults.buttonColors(contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = { show = false }) { Text("Cancel") } }
         ) { DatePicker(
-            colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = DatePickerDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                headlineContentColor = MaterialTheme.colorScheme.onPrimary,
+                weekdayContentColor = MaterialTheme.colorScheme.onPrimary,
+                subheadContentColor = MaterialTheme.colorScheme.onPrimary,
+                navigationContentColor = MaterialTheme.colorScheme.onPrimary,
+                yearContentColor = MaterialTheme.colorScheme.onPrimary,
+//                disabledYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                currentYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                selectedYearContainerColor = MaterialTheme.colorScheme.primaryFixed,
+                disabledSelectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+//                disabledSelectedYearContainerColor = MaterialTheme.colorScheme.onPrimary,
+                todayDateBorderColor = MaterialTheme.colorScheme.onPrimary,
+                todayContentColor = MaterialTheme.colorScheme.onPrimary,
+                dayContentColor = MaterialTheme.colorScheme.onPrimary,
+                dayInSelectionRangeContainerColor = MaterialTheme.colorScheme.primaryFixed,
+                dayInSelectionRangeContentColor = MaterialTheme.colorScheme.onPrimary,
+                selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                selectedDayContainerColor = MaterialTheme.colorScheme.primaryFixed,
+                disabledDayContentColor = MaterialTheme.colorScheme.onPrimary,
+//                disabledSelectedDayContainerColor = MaterialTheme.colorScheme.onPrimary,
+                disabledSelectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                dateTextFieldColors = TextFieldDefaults.colors(
+                    cursorColor = MaterialTheme.colorScheme.onSecondary,
+                    
+                )
+            ),
             state = dateState
         ) }
     }
@@ -532,7 +635,7 @@ internal fun MonthYearPickerDialog(
                 .fillMaxWidth()
                 .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
@@ -550,7 +653,7 @@ internal fun MonthYearPickerDialog(
                     ModernIconButton(
                         onClick = {if (selectedYear > yearRange.first) selectedYear--},
                         enabled = selectedYear > yearRange.first,
-                        icon = Icons.Default.KeyboardArrowLeft
+                        icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft
                     )
 
                     Spacer(modifier = Modifier.width(24.dp))
@@ -569,7 +672,7 @@ internal fun MonthYearPickerDialog(
                     ModernIconButton(
                         onClick = {if (selectedYear < yearRange.last) { selectedYear++ }},
                         enabled = selectedYear < yearRange.last,
-                        icon = Icons.Default.KeyboardArrowRight
+                        icon = Icons.AutoMirrored.Filled.KeyboardArrowRight
                     )
 
                 }
@@ -594,7 +697,7 @@ internal fun MonthYearPickerDialog(
                                 .aspectRatio(1.5f)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(
-                                    if (isSelected) MaterialTheme.colorScheme.surfaceVariant
+                                    if (isSelected) MaterialTheme.colorScheme.surface
                                     else Color.Transparent
                                 )
                                 .clickable { selectedMonth = monthIdx }
@@ -622,19 +725,111 @@ internal fun MonthYearPickerDialog(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("Cancel", fontWeight = FontWeight.Medium)
+                        Text("Cancel",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
 
                     FilledTonalButton(
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryFixed),
                         onClick = { onConfirm(YearMonth.of(selectedYear, selectedMonth)) },
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Confirm", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Confirm",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * A simpler version of the CustomToggleButton with a stateful implementation.
+ */
+@Composable
+fun ModernToggleButton(
+    modifier: Modifier = Modifier,
+    initialValue: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit,
+    width: Dp = 52.dp,
+    height: Dp = 32.dp,
+    checkedTrackColor: Color = MaterialTheme.colorScheme.onTertiaryFixed,
+    uncheckedTrackColor: Color = Color.Transparent,
+    thumbColor: Color = MaterialTheme.colorScheme.surfaceBright,
+    thumbSize: Dp = 24.dp,
+    borderWidth: Dp = 1.dp,
+    borderColor: Color = MaterialTheme.colorScheme.onTertiary
+) {
+    var checked by remember { mutableStateOf(initialValue) }
+
+    val interactionSource = remember { MutableInteractionSource() }
+
+    // Calculate the track padding to ensure the thumb fits properly
+    val padding = (height - thumbSize) / 2
+
+    // Calculate the offset for the thumb when checked
+    val thumbOffset = width - thumbSize - padding * 2
+
+    // Animate the thumb position
+    val offset by animateDpAsState(
+        targetValue = if (checked) thumbOffset else 0.dp,
+        label = "thumbOffset"
+    )
+
+    Box(
+        modifier = modifier
+            .width(width)
+            .height(height)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(height / 2))
+            .background(if (checked) checkedTrackColor else uncheckedTrackColor)
+            .border(
+                width = borderWidth,
+                color = borderColor,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(height / 2)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                onCheckedChange(!checked)
+            }
+    ) {
+        // Thumb
+        Box(
+            modifier = Modifier
+                .padding(start = padding + offset, top = padding, bottom = padding)
+                .size(thumbSize)
+                .clip(CircleShape)
+                .background(thumbColor)
+        )
+    }
+}
+
+
+@Composable
+fun ModernFilledTonalButton(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.onTertiaryFixed,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary
+) {
+    FilledTonalButton(
+        modifier = modifier,
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor)
+    ) {
+        Icon(icon, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(text)
     }
 }

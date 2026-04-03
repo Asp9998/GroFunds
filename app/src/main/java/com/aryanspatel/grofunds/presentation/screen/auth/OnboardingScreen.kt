@@ -25,13 +25,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.presentation.common.model.OnboardingPage
 import com.aryanspatel.grofunds.presentation.common.navigation.Destinations
-import com.aryanspatel.grofunds.presentation.components.Button
+import com.aryanspatel.grofunds.presentation.components.ModernButton
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -58,7 +58,7 @@ fun AuthScreen(
     // Navigate to Home once a user object appears
     LaunchedEffect(user) {
         if (user != null) {
-            navController.navigate(Destinations.HomeScreen.name) {
+            navController.navigate("Gate") {
                 popUpTo(Destinations.AuthScreen.name) { inclusive = true }
                 launchSingleTop = true
                 restoreState = true
@@ -286,17 +286,17 @@ private fun AuthActionButtons(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Button(
+        ModernButton(
             text = stringResource(R.string.onboarding_sign_up_button_text),
             onClick = onSignUpClick,
-            cornerRadius = 50.dp
+            cornerRadius = 999.dp,
         )
 
-        Button(
+        ModernButton(
             text = stringResource(R.string.onboarding_login_button_text),
             onClick = onLoginClick,
             isOutlined = true,
-            cornerRadius = 50.dp
+            cornerRadius = 999.dp,
         )
     }
 }

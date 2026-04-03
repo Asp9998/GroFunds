@@ -1,32 +1,44 @@
 package com.aryanspatel.grofunds
 
 import android.app.Application
-import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.StrictMode
-import androidx.startup.Initializer
+import androidx.hilt.work.HiltWorkerFactory
+import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
+import androidx.work.Configuration
 import com.aryanspatel.grofunds.data.sync.SyncBootstrapper
 import com.google.firebase.FirebaseApp
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.android.HiltAndroidApp
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Inject
 
 
 @HiltAndroidApp
-class GroFundsApplication: Application() {
+class GroFundsApplication() : Application()
+    , Configuration.Provider {
     @Inject lateinit var syncBootstrapper: SyncBootstrapper
+
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .setMinimumLoggingLevel(android.util.Log.DEBUG)
+            .build()
+
     override fun onCreate() {
         super.onCreate()
-        syncBootstrapper.start()   // Work Manager initialization for background sync
 
-        // Firebase Initializing
-        FirebaseApp.initializeApp(this)
+       // Ensure Firebase is ready before anything that may touch it
+        if (FirebaseApp.getApps(this).isEmpty()) {
+            FirebaseApp.initializeApp(this)
+        }
 
-        if (isAppDebuggable()) enableStrictMode()
+//        // Start background sync safely (don’t let it crash startup)
+        runCatching { syncBootstrapper.start() }
+            .onFailure { e -> android.util.Log.e("AppInit", "Sync bootstrap failed", e) }
 
+//        // Optional: debug strict mode
+        if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            enableStrictMode()
+        }
     }
 
     /**

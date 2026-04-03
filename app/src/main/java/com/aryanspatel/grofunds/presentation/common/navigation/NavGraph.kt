@@ -1,79 +1,134 @@
 package com.aryanspatel.grofunds.presentation.common.navigation
 
+import android.util.Log
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.tv.material3.Text
+import com.aryanspatel.grofunds.presentation.components.ProgressIndicator
 import com.aryanspatel.grofunds.presentation.screen.auth.AuthScreen
 import com.aryanspatel.grofunds.presentation.screen.showTransaction.ExpenseScreen
 import com.aryanspatel.grofunds.presentation.screen.home.HomeScreen
+import com.aryanspatel.grofunds.presentation.screen.initialPreferences.InitialPreferencesScreen
 import com.aryanspatel.grofunds.presentation.screen.showTransaction.IncomeScreen
 import com.aryanspatel.grofunds.presentation.screen.profile.ProfileScreen
 import com.aryanspatel.grofunds.presentation.screen.savings.SavingScreen
 import com.aryanspatel.grofunds.presentation.viewmodel.AuthViewModel
+import com.aryanspatel.grofunds.presentation.viewmodel.GateViewModel
 import com.aryanspatel.grofunds.presentation.viewmodel.HomeScreenViewModel
+import com.aryanspatel.grofunds.presentation.viewmodel.InitialPreferencesViewModel
+import com.aryanspatel.grofunds.presentation.viewmodel.SavingsViewModel
 import com.aryanspatel.grofunds.presentation.viewmodel.ShowTransactionViewModel
 
 @Composable
 fun NavGraph(
-    authViewModel: AuthViewModel = hiltViewModel() // ViewModel to manage Firebase Auth state
 ) {
-
     val navController = rememberNavController()
 
-    // Observe current user state from Firebase (null = logged out, non-null = logged in)
-    val user by authViewModel.user.collectAsStateWithLifecycle()
+    val vm: GateViewModel = hiltViewModel()
+    val state by vm.gateState.collectAsStateWithLifecycle()
 
-    // Set the start destination based on login status
-    val startDestination = if (user != null) {
-        Destinations.HomeScreen.name
-    } else {
-        Destinations.AuthScreen.name
+    val startDestination: String? = when (val s = state) {
+        GateViewModel.GateState.Loading -> null
+        is GateViewModel.GateState.Go -> s.dest.name
+        is GateViewModel.GateState.Error -> "Error" // or a safe fallback
     }
+
+    if (startDestination == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+//            ProgressIndicator()
+        }
+    } else {
 
     // NavHost holds all the navigation routes in the app
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        enterTransition = { fadeIn(animationSpec = tween(0)) },
+        exitTransition = {fadeOut(animationSpec = tween(0))},
+        popEnterTransition = { fadeIn(animationSpec = tween(0)) },
+        popExitTransition = { fadeOut(animationSpec = tween(0)) }
     ) {
-        // Authentication Screen
+
+        composable("Gate"){
+            val gateViewModel = hiltViewModel<GateViewModel>()
+            val state by gateViewModel.gateState.collectAsStateWithLifecycle()
+
+            when(val s = state){
+                GateViewModel.GateState.Loading -> {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        ProgressIndicator()}
+                }
+                is GateViewModel.GateState.Error -> {
+                    Log.d("InitialError", ": ${s.message}")
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("Error: ${s.message}")
+                    }
+
+                }
+                is GateViewModel.GateState.Go -> {
+                    navController.navigate(s.dest.name){
+                        popUpTo("Gate"){inclusive = true}
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+
+        /** 1) Authentication Screen */
         composable(route = Destinations.AuthScreen.name) {
-            // Pass navController so AuthScreen can navigate on success
-            // Pass authViewModel so it can call signIn/signUp
+            val authViewModel = hiltViewModel<AuthViewModel>()
             AuthScreen(
                 navController = navController,
                 viewModel = authViewModel
             )
         }
 
-        // Home Screen (after login)
-        composable(route = Destinations.HomeScreen.name) {
-            val vm = hiltViewModel<HomeScreenViewModel>()
-            HomeScreen(
+        /** 2) Initial Preference screen for account set up (Currency & Budget)
+         *     - run only once.
+         */
+        composable(route = Destinations.InitialPreferencesScreen.name){
+            val initialPreferencesViewModel = hiltViewModel<InitialPreferencesViewModel>()
+            InitialPreferencesScreen(
                 navController = navController,
-                viewModel = vm,
-                onLogout = {
-                    authViewModel.signOut() // Clear Firebase session
-                    navController.navigate(Destinations.AuthScreen.name) {
-                        // Remove HomeScreen from backstack to prevent going back after logout
-                        popUpTo(Destinations.HomeScreen.name) { inclusive = true }
-                    }
-                }
+                viewModel = initialPreferencesViewModel
             )
         }
 
-        //Profile Screen
-        composable(route = Destinations.ProfileScreen.name) {
-            ProfileScreen(authViewModel = authViewModel)
+        /** 3) Home Screen (Main Dashboard) */
+        composable(route = Destinations.HomeScreen.name) {
+            val homeScreenViewModel = hiltViewModel<HomeScreenViewModel>()
+            HomeScreen(
+                navController = navController,
+                viewModel = homeScreenViewModel,
+            )
         }
 
-        // Expense Screen
+        /** 4) Profile Screen */
+        composable(route = Destinations.ProfileScreen.name) {
+            val initialPreferencesViewModel = hiltViewModel<InitialPreferencesViewModel>()
+            ProfileScreen(
+                viewModel = initialPreferencesViewModel
+            )
+        }
+
+        /** 5) Show Transactions
+         *     i) Expense Screen
+         */
         composable(
             route = Destinations.ExpenseScreen.name,
             arguments = listOf(
@@ -83,11 +138,13 @@ fun NavGraph(
                 }
             )
         ) { backStackEntry ->
-            val vm = hiltViewModel<ShowTransactionViewModel>(backStackEntry)
-            ExpenseScreen(viewModel = vm)
+            val showTransactionViewModel = hiltViewModel<ShowTransactionViewModel>(backStackEntry)
+            ExpenseScreen(viewModel = showTransactionViewModel)
         }
 
-        // Income Screen
+        /** 5) Show Transactions
+         *     ii) Income Screen
+         */
         composable(route = Destinations.IncomeScreen.name,
             arguments = listOf(
                 navArgument("kind"){
@@ -96,13 +153,19 @@ fun NavGraph(
                 }
             )
         ) { backStackEntry ->
-            val vm = hiltViewModel<ShowTransactionViewModel>(backStackEntry)
-            IncomeScreen(viewModel = vm)
+            val showTransactionViewModel = hiltViewModel<ShowTransactionViewModel>(backStackEntry)
+            IncomeScreen(viewModel = showTransactionViewModel)
         }
 
-        // Saving Screen
+        /**
+         *  6) Saving Screen
+         */
         composable(route = Destinations.SavingScreen.name) {
-            SavingScreen()
+            val savingsViewModel = hiltViewModel<SavingsViewModel>()
+            SavingScreen(
+                viewModel = savingsViewModel
+            )
         }
+    }
     }
 }

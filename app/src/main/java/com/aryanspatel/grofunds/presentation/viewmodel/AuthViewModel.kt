@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.core.DispatcherProvider
+import com.aryanspatel.grofunds.data.local.GroFundsDatabase
 import com.aryanspatel.grofunds.data.remote.model.UserProfile
 import com.aryanspatel.grofunds.domain.model.AuthUser
 import com.aryanspatel.grofunds.domain.port.SyncOrchestrator
@@ -33,7 +34,8 @@ import javax.inject.Inject
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val orchestrator: SyncOrchestrator,
-    private val dp: DispatcherProvider
+    private val dp: DispatcherProvider,
+    private val db: GroFundsDatabase
 ) : ViewModel() {
 
 
@@ -178,6 +180,7 @@ class AuthViewModel @Inject constructor(
             Log.d("SingOutException", "signOut: Pushed failed, cannot sign out")
             return@launch
         }
+        db.clearAllTables()
         authRepository.signOut()
      }
 

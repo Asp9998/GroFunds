@@ -214,6 +214,7 @@ class AddEntryViewModel @Inject constructor(
                 saveGoal(
                     id = id,
                     edits = ParsedEntry.Goal(
+                        kind = uiState.kind.name,
                         input = uiState.inputNote,
                         title = title,
                         amount = amt,
@@ -249,16 +250,30 @@ class AddEntryViewModel @Inject constructor(
         }
     }
 
-    fun onExpenseSubChanged(v: String)        = _uiState.update { it.copy(expenseSubcategory = v) }
-    fun onExpenseMerchantChanged(v: String)   = _uiState.update { it.copy(expenseMerchant = v) }
-    fun onGoalTitleChanged(v: String)         = _uiState.update { it.copy(goalTitle = v) }
-    fun onGoalDueDateChanged(v: String)       = _uiState.update { it.copy(goalDueDate = v) }
-    fun onGoalStartAmountChanged(v: String)   = _uiState.update { it.copy(goalStartAmount = v) }
-    fun onNoteChanged(v: String)              = _uiState.update { it.copy(note = v) }
-    fun onDocPathChanged(v: String?)           = _uiState.update { it.copy(docPath = v) }
-    fun onDraftIdChanged(v: String?)           = _uiState.update { it.copy(draftId = v) }
-    fun onIsParsedChanged(v: Boolean)          = _uiState.update { it.copy(isParsed = v) }
-    fun onSelectedOptionChanged(v: EntryKind)  = _uiState.update { it.copy(kind = v) }
+    fun onExpenseSubChanged(v: String)        = viewModelScope.launch { _uiState.update { it.copy(expenseSubcategory = v) }}
+    fun onExpenseMerchantChanged(v: String)   = viewModelScope.launch { _uiState.update { it.copy(expenseMerchant = v) }}
+    fun onGoalTitleChanged(v: String)         = viewModelScope.launch {  _uiState.update { it.copy(goalTitle = v) }}
+    fun onGoalDueDateChanged(v: String)       = viewModelScope.launch { _uiState.update { it.copy(goalDueDate = v) }}
+    fun onGoalStartAmountChanged(v: String)   = viewModelScope.launch { _uiState.update { it.copy(goalStartAmount = v) }}
+    fun onNoteChanged(v: String)              = viewModelScope.launch { _uiState.update { it.copy(note = v) }}
+    fun onDocPathChanged(v: String?)          = viewModelScope.launch { _uiState.update { it.copy(docPath = v) }}
+    fun onDraftIdChanged(v: String?)          = viewModelScope.launch { _uiState.update { it.copy(draftId = v) }}
+    fun onIsParsedChanged(v: Boolean)         = viewModelScope.launch { _uiState.update { it.copy(isParsed = v) }}
+    fun onSelectedOptionChanged(v: EntryKind) = viewModelScope.launch {
+
+        val state = _uiState.value
+        val prev = state.kind
+        if (prev == v) return@launch
+
+        // delete unsaved Draft
+        state.draftId?.let { deleteDraftIfUnsaved(prev, it) }
+
+        // reset everything, clear all fields
+        resetScreen(v)
+
+        // update kind with new selected option
+        _uiState.update { it.copy(kind = v) }
+    }
 
     /** ───────────────────────── Note input  ───────────────────────── */
 
@@ -546,6 +561,7 @@ private fun mapToParsedEntry(
         )
 
         EntryKind.GOAL -> ParsedEntry.Goal(
+            kind = firstString(*km.kind.toTypedArray()),
             input = firstString(*km.input.toTypedArray()),
             title = firstString(*(km.extras["name"] ?: emptyList()).toTypedArray()),
             amount = firstNumber(*km.amount.toTypedArray()),

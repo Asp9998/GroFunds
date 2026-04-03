@@ -28,11 +28,18 @@ object DateConverters {
 
     // UI format: "MON OCT 06, 2025"
     // Parsing is case-insensitive; output should be uppercased for consistency.
+    private val UI_FORMATTER_WITHOUT_DAY: DateTimeFormatter =
+        DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("MMM dd, yyyy")
+            .toFormatter(Locale.US)
+
     private val UI_FORMATTER: DateTimeFormatter =
         DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .appendPattern("EEE MMM dd, yyyy")
             .toFormatter(Locale.US)
+
 
     // Prefer a getter if your app can change device timezone at runtime.
     private val SYSTEM_ZONE: ZoneId = ZoneId.systemDefault()
@@ -60,6 +67,10 @@ object DateConverters {
         val ld = LocalDate.parse(s, UI_FORMATTER)
         return ld.atStartOfDay(SYSTEM_ZONE).toInstant().toEpochMilli()
     }
+    fun stringToMillisWithoutDay(s: String): Long {
+        val ld = LocalDate.parse(s, UI_FORMATTER_WITHOUT_DAY)
+        return ld.atStartOfDay(SYSTEM_ZONE).toInstant().toEpochMilli()
+    }
 
     /**
      * Firebase Timestamp -> String ("EEE MMM dd, yyyy") in system zone.
@@ -76,9 +87,14 @@ object DateConverters {
      * ✅ Use for millis that represent a real Instant (system-zone interpretation for display).
      * ❌ DO NOT use this with Material3 DatePicker's selectedDateMillis (UTC midnight)! See picker helpers.
      */
-    fun millisToString(ms: Long): String {
+    fun millisToStringWithDay(ms: Long): String {
         val ld = Instant.ofEpochMilli(ms).atZone(SYSTEM_ZONE).toLocalDate()
         return ld.format(UI_FORMATTER).uppercase(Locale.US)
+    }
+
+    fun millisToString(ms: Long): String {
+        val ld = Instant.ofEpochMilli(ms).atZone(SYSTEM_ZONE).toLocalDate()
+        return ld.format(UI_FORMATTER_WITHOUT_DAY)
     }
 
     /**
