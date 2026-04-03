@@ -26,13 +26,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
-import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
 import com.aryanspatel.grofunds.presentation.components.ProgressIndicator
 import androidx.compose.material3.SnackbarHostState
 import com.aryanspatel.grofunds.presentation.common.model.UiText
 import com.aryanspatel.grofunds.presentation.common.model.UserCredentials
+import com.aryanspatel.grofunds.presentation.components.ModernButton
 import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
 
 
@@ -102,7 +102,8 @@ fun SignUpScreen(
                     value = email,
                     onValueChange = { onEmailChange(it)},
                     label = stringResource(R.string.auth_email_label),
-                    keyboardType = KeyboardType.Email
+                    keyboardType = KeyboardType.Email,
+                    isFirstLetterCapital = false
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -112,7 +113,8 @@ fun SignUpScreen(
                     onValueChange = {onPasswordChange(it)},
                     label = stringResource(R.string.auth_password_label),
                     keyboardType = KeyboardType.Password,
-                    isPassword = true
+                    isPassword = true,
+                    isFirstLetterCapital = false
                 )
 
                 Column(
@@ -128,7 +130,7 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
+                ModernButton(
                     text = stringResource(R.string.signup_screen_action_button_text),
                     onClick = {
                         onSighUpClick(email.trim(), password.trim(), preferredName.trim())

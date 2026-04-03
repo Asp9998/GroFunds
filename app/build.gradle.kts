@@ -12,6 +12,8 @@ plugins {
 
     // Crashlytics Gradle plugin
     id("com.google.firebase.crashlytics")
+
+    kotlin("plugin.serialization")
 }
 
 android {
@@ -63,6 +65,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.kotlinx.serialization.json)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -70,6 +73,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.firebase.crashlytics.buildtools)
@@ -78,6 +82,8 @@ dependencies {
     implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.appcompat.resources)
     implementation(libs.androidx.lifecycle.process)
+    implementation(libs.material3)
+
 
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
@@ -131,7 +137,6 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.truth)
-//    testImplementation(libs.google.firebase.auth)
 
     // Instrumentation tests
     androidTestImplementation(libs.androidx.junit)
@@ -147,7 +152,5 @@ dependencies {
 
     // MPAndroid Chart
     implementation(libs.mpandroidchart)
-
-
 
 }

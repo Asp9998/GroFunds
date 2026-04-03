@@ -4,32 +4,34 @@ import androidx.compose.ui.graphics.Color
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.domain.model.CategoryResolution
 import com.aryanspatel.grofunds.domain.model.CategorySeed
+import com.aryanspatel.grofunds.presentation.common.model.Kind
+import kotlin.text.lowercase
 
 val CURRENCY_LIST_ENUM = listOf(
     "CAD","USD","EUR","GBP","INR","AUD"
 )
 
 val BuiltInIncomeTypes = listOf(
-    CategorySeed("salary", "Salary", iconRes = R.drawable.salary, color = Color(0xFF43A047)),
-    CategorySeed("overtime", "Overtime", iconRes = R.drawable.overtime, color = Color(0xFFFB8C00)),
-    CategorySeed("bonus", "Bonus", iconRes = R.drawable.bonus, color = Color(0xFFFDD835)),
-    CategorySeed("commission", "Commission", iconRes = R.drawable.commission, color = Color(0xFFAED581)),
-    CategorySeed("tips", "Tips", iconRes = R.drawable.tips, color = Color(0xFFE53935)),
-    CategorySeed("stock-compensation", "Stock Compensation", iconRes = R.drawable.stock, color = Color(0xFF00ACC1)),
-    CategorySeed("freeLance-contract", "Freelance/Contract", iconRes = R.drawable.contract, color = Color(0xFF1E88E5)),
-    CategorySeed("business", "Business", iconRes = R.drawable.business, color =Color(0xFF5E35B1)),
-    CategorySeed("rental", "Rental", iconRes = R.drawable.rent, color = Color(0xFF8E24AA)),
-    CategorySeed("interest", "Interest", iconRes = R.drawable.interest, color = Color(0xFFD81B60)),
-    CategorySeed("dividend", "Dividend", iconRes = R.drawable.dividends, color = Color(0xFF6D4C41)),
-    CategorySeed("capital-gains", "Capital Gains", iconRes = R.drawable.capital_gain, color = Color(0xFF00897B)),
-    CategorySeed("royalties", "Royalties", iconRes = R.drawable.royalties, color = Color(0xFF7CB342)),
-    CategorySeed("government-benefits", "Government Benefits", iconRes = R.drawable.government_benefit, color = Color(0xFFFF7043)),
-    CategorySeed("pension-annuity", "Pension/Annuity", iconRes = R.drawable.pension, color = Color(0xFF26C6DA)),
-    CategorySeed("alimony-child-support", "Alimony/Child Support", iconRes = R.drawable.child_upport, color = Color(0xFF8D6E63)),
-    CategorySeed("gifts", "Gifts", iconRes = R.drawable.gift, color = Color(0xFF7E57C2)),
-    CategorySeed("prize-award", "Prize/Award", iconRes = R.drawable.prize_award, color = Color(0xFFEC407A)),
-    CategorySeed("cashback-rebate", "Cashback/Rebate", iconRes = R.drawable.cash_back, color = Color(0xFF42A5F5)),
-    CategorySeed("other", "Other", iconRes = R.drawable.other, color = Color(0xFF9CCC65))
+    CategorySeed("salary", "Salary", iconRes = R.drawable.salary, emoji = "💼", color = Color(0xFF43A047)),
+    CategorySeed("overtime", "Overtime", iconRes = R.drawable.overtime, emoji = "⏱️", color = Color(0xFFFB8C00)),
+    CategorySeed("bonus", "Bonus", iconRes = R.drawable.bonus, emoji = "🎉", color = Color(0xFFFDD835)),
+    CategorySeed("commission", "Commission", iconRes = R.drawable.commission, emoji = "🤝", color = Color(0xFFAED581)),
+    CategorySeed("tips", "Tips", iconRes = R.drawable.tips, emoji = "💸", color = Color(0xFFE53935)),
+    CategorySeed("stock-compensation", "Stock Compensation", iconRes = R.drawable.stock, emoji = "📈", color = Color(0xFF00ACC1)),
+    CategorySeed("freeLance-contract", "Freelance/Contract", iconRes = R.drawable.contract, emoji = "✍️", color = Color(0xFF1E88E5)),
+    CategorySeed("business", "Business", iconRes = R.drawable.business, emoji = "🏢", color =Color(0xFF5E35B1)),
+    CategorySeed("rental", "Rental", iconRes = R.drawable.rent, emoji = "🏠", color = Color(0xFF8E24AA)),
+    CategorySeed("interest", "Interest", iconRes = R.drawable.interest, emoji = "📊", color = Color(0xFFD81B60)),
+    CategorySeed("dividend", "Dividend", iconRes = R.drawable.dividends, emoji = "🪙", color = Color(0xFF6D4C41)),
+    CategorySeed("capital-gains", "Capital Gains", iconRes = R.drawable.capital_gain, emoji = "🚀", color = Color(0xFF00897B)),
+    CategorySeed("royalties", "Royalties", iconRes = R.drawable.royalties, emoji = "👑", color = Color(0xFF7CB342)),
+    CategorySeed("government-benefits", "Government Benefits", iconRes = R.drawable.government_benefit, emoji = "🏛️", color = Color(0xFFFF7043)),
+    CategorySeed("pension-annuity", "Pension/Annuity", iconRes = R.drawable.pension, emoji = "🧓", color = Color(0xFF26C6DA)),
+    CategorySeed("alimony-child-support", "Alimony/Child Support", iconRes = R.drawable.child_upport, emoji = "👶", color = Color(0xFF8D6E63)),
+    CategorySeed("gifts", "Gifts", iconRes = R.drawable.gift, emoji = "🎁", color = Color(0xFF7E57C2)),
+    CategorySeed("prize-award", "Prize/Award", iconRes = R.drawable.prize_award, emoji = "🏆", color = Color(0xFFEC407A)),
+    CategorySeed("cashback-rebate", "Cashback/Rebate", iconRes = R.drawable.cash_back, emoji = "💵", color = Color(0xFF42A5F5)),
+    CategorySeed("other", "Other", iconRes = R.drawable.other, emoji = "🧩", color = Color(0xFF9CCC65))
 )
 
 val BuiltInSavingTypes = listOf(
@@ -56,23 +58,23 @@ val BuiltInSavingTypes = listOf(
 )
 
 val BuiltInExpenseCategories = listOf(
-    CategorySeed("food-drink", "Food & Drink", iconRes = R.drawable.food_and_drinks, color = Color(0xFF1ABC9C)),
-    CategorySeed("shopping", "Shopping", iconRes = R.drawable.shopping, color = Color(0xFF8BC34A)),
-    CategorySeed("transport", "Transport", iconRes = R.drawable.transportation, color = Color(0xFF3498DB)),
-    CategorySeed("bills", "Bills", iconRes = R.drawable.bills, color = Color(0xFFE91E63)),
-    CategorySeed("debt-loans", "Loans & Mortgages", iconRes = R.drawable.debt, color = Color(0xFFF39C12)),
-    CategorySeed("entertainment", "Entertainment", iconRes = R.drawable.entertainment, color = Color(0xFF9B59B6)),
-    CategorySeed("subscriptions-services", "Subscriptions & Services", iconRes = R.drawable.subscription, color = Color(0xFFCDDC39)),
-    CategorySeed("health-fitness", "Health & Fitness", iconRes = R.drawable.health, color = Color(0xFF00BCD4)),
-    CategorySeed("travel", "Travel", iconRes = R.drawable.travel, color = Color(0xFFFF5722)),
-    CategorySeed("personal-care", "Personal Care", iconRes = R.drawable.personal_care, color = Color(0xFF795548)),
-    CategorySeed("childcare-family", "Childcare & Family", iconRes = R.drawable.child_care, color = Color(0xFF607D8B)),
-    CategorySeed("pets", "Pets", iconRes = R.drawable.pets, color = Color(0xFFF44336)),
-    CategorySeed("insurance", "Insurance", iconRes = R.drawable.insaurance, color = Color(0xFF2ECC71)),
-    CategorySeed("education", "Education", iconRes = R.drawable.education, color = Color(0xFF3F51B5)),
-    CategorySeed("gifts-donations", "Gifts & Donations", iconRes = R.drawable.gifts, color = Color(0xFF7E57C2)),
-    CategorySeed("taxes", "Taxes", iconRes = R.drawable.tax, color = Color(0xFFFFC107)),
-    CategorySeed("other", "Other", iconRes = R.drawable.other, color = Color(0xFF960040))
+    CategorySeed(id = "food-drink", name = "Food & Drink", iconRes = R.drawable.food_and_drinks, emoji = "🍽️", color = Color(0xFF1ABC9C)),
+    CategorySeed(id = "shopping", name ="Shopping", iconRes = R.drawable.shopping, emoji = "🛍️", color = Color(0xFF8BC34A)),
+    CategorySeed(id = "transport", name ="Transport", iconRes = R.drawable.transportation, emoji = "🚗", color = Color(0xFF3498DB)),
+    CategorySeed(id = "bills", name ="Bills", iconRes = R.drawable.bills, emoji = "💡", color = Color(0xFFE91E63)),
+    CategorySeed(id = "debt-loans", name ="Loans & Mortgages", iconRes = R.drawable.debt, emoji = "🏦", color = Color(0xFFF39C12)),
+    CategorySeed(id = "entertainment", name ="Entertainment", iconRes = R.drawable.entertainment, emoji = "🎬", color = Color(0xFF9B59B6)),
+    CategorySeed(id = "subscriptions-services", name ="Subscriptions & Services", iconRes = R.drawable.subscription, emoji = "🔁", color = Color(0xFFCDDC39)),
+    CategorySeed(id = "health-fitness", name ="Health & Fitness", iconRes = R.drawable.health, emoji = "🩺", color = Color(0xFF00BCD4)),
+    CategorySeed(id = "travel", name ="Travel", iconRes = R.drawable.travel, emoji = "✈️", color = Color(0xFFFF5722)),
+    CategorySeed(id = "personal-care", name ="Personal Care", iconRes = R.drawable.personal_care,emoji = "🧴️",  color = Color(0xFF795548)),
+    CategorySeed(id = "childcare-family", name ="Childcare & Family", iconRes = R.drawable.child_care,emoji = "👨‍👩‍👧",  color = Color(0xFF607D8B)),
+    CategorySeed(id = "pets", name ="Pets", iconRes = R.drawable.pets, emoji = "🐾", color = Color(0xFFF44336)),
+    CategorySeed(id = "insurance", name ="Insurance", iconRes = R.drawable.insaurance, emoji = "🛡️", color = Color(0xFF2ECC71)),
+    CategorySeed(id = "education", name ="Education", iconRes = R.drawable.education, emoji = "🎓️", color = Color(0xFF3F51B5)),
+    CategorySeed(id = "gifts-donations", name ="Gifts & Donations", iconRes = R.drawable.gifts, emoji = "🎁️", color = Color(0xFF7E57C2)),
+    CategorySeed(id = "taxes", name ="Taxes", iconRes = R.drawable.tax, emoji = "🧾", color = Color(0xFFFFC107)),
+    CategorySeed(id = "other", name ="Other", iconRes = R.drawable.other, emoji = "🧩️", color = Color(0xFF960040))
 )
 
 val BuiltInExpenseSubcategories = listOf(
@@ -202,7 +204,6 @@ val BuiltInExpenseSubcategories = listOf(
     // Other
     CategorySeed("other.other", "Other", "other"),
 )
-
 
 val expenseCategoryById = BuiltInExpenseCategories.associateBy { it.id }
 private val expenseCategoryByName = BuiltInExpenseCategories.associateBy { it.name.lowercase() }
@@ -356,5 +357,30 @@ fun resolveSavingTypeLabel(typeIdInput: String?): CategoryResolution {
 
     return CategoryResolution(categoryId = OTHER_CAT_SUBCATEGORY_LABEL)
 }
+
+/** 8) get category or type icon from label */
+fun getIcon(categoryOrtTypeId: String, kind: String): Int?{
+    if(kind == Kind.EXPENSE.name){
+        val res = expenseCategoryByName[categoryOrtTypeId.lowercase()]
+        return res?.iconRes
+    }else{
+        val res = incomeTypeByName[categoryOrtTypeId.lowercase()]
+        return res?.iconRes
+    }
+
+}
+
+fun getEmoji(categoryOrtTypeId: String, kind: String): String? {
+    if(kind == Kind.EXPENSE.name){
+        val res = expenseCategoryByName[categoryOrtTypeId.lowercase()]
+        return res?.emoji
+    }else{
+        val res = incomeTypeByName[categoryOrtTypeId.lowercase()]
+        return res?.emoji
+    }
+
+}
+
+
 
 

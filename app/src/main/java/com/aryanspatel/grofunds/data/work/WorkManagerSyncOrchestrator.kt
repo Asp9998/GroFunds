@@ -1,6 +1,7 @@
 package com.aryanspatel.grofunds.data.work
 
 import android.app.Application
+import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -11,10 +12,10 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.aryanspatel.grofunds.data.sync.PullRemoteWorker
-import com.aryanspatel.grofunds.data.sync.PushDirtyWorker
 import com.aryanspatel.grofunds.domain.port.SyncOrchestrator
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -86,6 +87,7 @@ class WorkManagerSyncOrchestrator @Inject constructor(
     }
 
     override fun pullNow() {
+        Log.d("PullTestingDebugging", "pullTransactions: inside pull")
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         wm.enqueueUniqueWork(
             "pull-now",
@@ -95,6 +97,8 @@ class WorkManagerSyncOrchestrator @Inject constructor(
     }
 
     override suspend fun pushAllDirtyAndWait(timeoutMs: Long): Boolean {
+        Log.d("SingOutException", "signOut: into push all dirty")
+
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val req = OneTimeWorkRequestBuilder<PushDirtyWorker>()
             .setConstraints(constraints)
@@ -106,11 +110,23 @@ class WorkManagerSyncOrchestrator @Inject constructor(
         wm.enqueueUniqueWork("push-before-sign-out", ExistingWorkPolicy.REPLACE, req)
 
         // Wait (bounded) till it finishes
-        return withTimeoutOrNull(timeoutMs) {
-            wm.getWorkInfoByIdFlow(req.id).first { it!!.state.isFinished}
-        }?.let { info ->
-            info.state == WorkInfo.State.SUCCEEDED
-        } ?: false
+//        return withTimeoutOrNull(timeoutMs) {
+//            wm.getWorkInfoByIdFlow(req.id).first { it!!.state.isFinished}
+//        }?.let { info ->
+//            info.state == WorkInfo.State.SUCCEEDED ||
+//        } ?: false
+
+        val finished = withTimeoutOrNull(timeoutMs) {
+            wm.getWorkInfoByIdFlow(req.id)
+                .filterNotNull()
+                .onEach { Log.d("SignOutException", "state=${it.state}, err=${it.outputData.getString("error")}")}
+                .first { it.state == WorkInfo.State.SUCCEEDED ||
+                        it.state == WorkInfo.State.FAILED ||
+                        it.state == WorkInfo.State.CANCELLED }
+        } ?: return false // timed out
+
+        
+        return finished.state == WorkInfo.State.SUCCEEDED
     }
 
 }

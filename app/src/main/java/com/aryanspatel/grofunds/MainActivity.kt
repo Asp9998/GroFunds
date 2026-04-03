@@ -30,11 +30,8 @@ fun GroFunds(){
     GroFundsTheme {
         Box (modifier = Modifier.fillMaxSize()
         ) {
-
-            Surface ( modifier = Modifier
-                .fillMaxSize(),
+            Surface ( modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
-
             ){
                 NavGraph()
             }

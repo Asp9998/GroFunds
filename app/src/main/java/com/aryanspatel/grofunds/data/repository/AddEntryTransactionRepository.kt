@@ -3,14 +3,20 @@ package com.aryanspatel.grofunds.data.repository
 import android.util.Log
 import com.aryanspatel.grofunds.core.DispatcherProvider
 import com.aryanspatel.grofunds.core.awaitIo
+import com.aryanspatel.grofunds.data.local.DTO.ContributionRow
+import com.aryanspatel.grofunds.data.local.DTO.SavingRow
 import com.aryanspatel.grofunds.data.local.dao.AccountSummaryDao
+import com.aryanspatel.grofunds.data.local.dao.SavingContributionsDao
+import com.aryanspatel.grofunds.data.local.dao.SavingsDao
 import com.aryanspatel.grofunds.data.local.dao.SyncStateDao
 import com.aryanspatel.grofunds.data.local.dao.TransactionDao
 import com.aryanspatel.grofunds.data.local.entity.AccountSummaryEntity
+import com.aryanspatel.grofunds.data.local.entity.SavingContributionEntity
+import com.aryanspatel.grofunds.data.local.entity.SavingsEntity
 import com.aryanspatel.grofunds.data.local.entity.TransactionEntity
 import com.aryanspatel.grofunds.data.remote.model.CategoryTotal
+import com.aryanspatel.grofunds.data.remote.model.SavingsDoc
 import com.aryanspatel.grofunds.data.remote.model.TransactionDoc
-import com.aryanspatel.grofunds.domain.model.CategoryResolution
 import com.aryanspatel.grofunds.domain.model.DraftRef
 import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.model.ParseState
@@ -26,7 +32,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions.merge
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +42,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,6 +63,8 @@ class AddEntryTransactionRepository @Inject constructor(
     private val db: FirebaseFirestore,
     private val currentUser: CurrentUserProvider,
     private val transactionDao: TransactionDao,
+    private val savingsDao: SavingsDao,
+    private val savingContributionsDao: SavingContributionsDao,
     private val syncStateDao: SyncStateDao,
     private val accountSummaryDao: AccountSummaryDao,
     private val dp: DispatcherProvider
@@ -205,7 +213,8 @@ class AddEntryTransactionRepository @Inject constructor(
             note            = e.notes?.ifBlank { null },
             date            = Timestamp(Date(dateMillis)),
             status          = "saved",
-            updatedAt       = FieldValue.serverTimestamp()                   // important: let server set it
+            isExcluded      = false  ,
+            updatedAt       = null                  // important: let server set it
         )
 
         val now = System.currentTimeMillis()
@@ -276,7 +285,8 @@ class AddEntryTransactionRepository @Inject constructor(
             note            = i.notes?.ifBlank { null },
             date            = Timestamp(Date(dateMillis)),
             status          = "saved",
-            updatedAt       = FieldValue.serverTimestamp()                   // important: let server set it
+            isExcluded      = false,
+            updatedAt       = null                   // important: let server set it
         )
 
         val now = System.currentTimeMillis()
@@ -322,26 +332,79 @@ class AddEntryTransactionRepository @Inject constructor(
             } ?: System.currentTimeMillis()  // prefer start-of-day over System.currentTimeMillis()
         }
 
+        val dueDateMillis: Long = withContext(dp.default) {
+            g.dueDate?.let { txt ->
+                runCatching { DateConverters.stringToMillis(txt) }.getOrNull()
+            } ?: System.currentTimeMillis()  // prefer start-of-day over System.currentTimeMillis()
+        }
+
         val res = resolveSavingTypeId(g.type)
         val now = System.currentTimeMillis()
-        val updateGoal = mapOf(
-            "savingID"                to id,
-            "input"                   to g.input,
-            "title"                   to g.title,
-            "categoryOrTypeID"        to res.categoryId,
-            "amount"                  to g.amount,
-            "currency"                to g.currency?.uppercase(Locale.ROOT),
-            "dueDate"                 to g.dueDate,
-            "startAmount"             to g.startAmount,
-            "date"                    to Timestamp(Date(dateMillis)),
-            "note"                    to g.notes?.ifBlank { null },
-            "status"                  to "saved",
-            "updatedAt"               to FieldValue.serverTimestamp()
+
+        val payload = SavingsDoc(
+            kind = g.kind.toString(),
+            savingsId = id,
+            input = g.input,
+            title = g.title,
+            type = g.type,
+            amount = g.amount,
+            currencyId = g.currency,
+            dueDate = Timestamp(Date(dueDateMillis)),
+            createdAt = Timestamp(Date(dateMillis)),
+            note = g.notes,
+            status = "saved",
+            updatedAt = null,
         )
 
+        val saving = SavingsEntity(
+            savingId = id,
+            userId = userUid,
+            input = g.input ?: "",
+            targetAmount = g.amount ?: 0.0,
+            startAmount = g.startAmount ?: 0.0,
+            savedAmount = g.startAmount ?: 0.0,
+            typeId = res.categoryId,
+            title = g.title ?: "",
+            date = dateMillis,
+            dueDate = dueDateMillis,
+            note = g.notes ?: "",
+            createdAt = now,
+            localUpdatedAt = now,
+            remoteUpdatedAt = 0L,
+            isDirty = true,
+            isDeleted = false,
+        )
+
+        val uuid = UUID.randomUUID().toString()
+
+        val initialContribution = SavingContributionEntity(
+            contributionId = uuid,
+            savingId = id,
+            note = "Start Amount",
+            amount = g.startAmount ?: 0.0,
+            createdAt = dateMillis,
+            localUpdatedAt = now,
+            remoteUpdatedAt = 0L,
+            isDirty = true,
+            isDeleted = false,
+        )
+
+
         withTimeout(15_000) {
-            docRef.update(updateGoal).await()
+            docRef.set(payload).await()
         }
+
+        insertAccountIfAbsent(currency = g.currency?.uppercase(Locale.ROOT) ?: "", updateAt = now)
+        saveSaving(saving)
+        addContribution(initialContribution)
+
+        runCatching {
+            val snap = withTimeout(10_000) { docRef.get().awaitIo(dp) }
+            val serverMillis = snap.getTimestamp("updatedAt")?.toDate()?.time ?: 0L
+            savingsDao.updateRemoteUpdatedAt(id = id, remoteUpdatedAt = serverMillis)
+            savingContributionsDao.updateRemoteUpdatedAt(id = id, remoteUpdatedAt = serverMillis)
+        }
+
     }
 
 
@@ -416,8 +479,8 @@ class AddEntryTransactionRepository @Inject constructor(
     }
 
 //    fun observeCategoryTotal
+fun observeCategoryTotal(
 
-    fun observeCategoryTotal(
         userId: String = userUid,
         kind: String,
         startDate: Long,
@@ -434,6 +497,26 @@ class AddEntryTransactionRepository @Inject constructor(
 //     = dao.observeByCategory(userId, kind, startDate, endDate, listOfCategory)
 
 
+    // --------------- Savings dao
+
+    suspend fun saveSaving(saving: SavingsEntity){
+        savingsDao.saveSaving(saving)
+    }
+
+    fun observeSavings(): Flow<List<SavingRow>> =
+        savingsDao.observeSavings(userId = userUid)
+
+
+    // ----------------- saving contribution dao
+
+    suspend fun addContribution(contribution: SavingContributionEntity){
+        savingContributionsDao.addContribution(contribution)
+
+        updateSaving(saving = contribution.amount, updatedAt = contribution.localUpdatedAt)
+    }
+
+    fun observeContributions(savingId: String): Flow<List<ContributionRow>> = savingContributionsDao.observeContributionBySaving(savingId)
+
 
     //  ------------ account Summary dao
 
@@ -445,7 +528,9 @@ class AddEntryTransactionRepository @Inject constructor(
             AccountSummaryEntity(
                 userId = userUid,
                 currencyCode = currency,
-                updatedAt = updateAt,
+                remoteUpdatedAt = updateAt,
+                localeUpdatedAt = updateAt,
+                isDirty = false,
             )
         )
 

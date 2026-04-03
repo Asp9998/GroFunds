@@ -15,4 +15,7 @@ plugins {
     // Add the dependency for the Crashlytics Gradle plugin
     id("com.google.firebase.crashlytics") version "3.0.6" apply false
 
+    // Kotlinx Serialization
+    kotlin("plugin.serialization") version libs.versions.kotlin.get()
+
 }

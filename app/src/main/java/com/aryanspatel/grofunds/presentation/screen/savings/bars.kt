@@ -1,17 +1,24 @@
 package com.aryanspatel.grofunds.presentation.screen.savings
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.max
 import kotlin.math.min
 import androidx.core.graphics.toColorInt
+import com.aryanspatel.grofunds.domain.model.EntryKind
 
 // Data models
 data class ContributionData(
@@ -41,23 +49,15 @@ data class ContributionData(
     val pace: Float = 250f,
 )
 
-enum class Granularity(val label: String) {
-    WEEKLY("Weekly"),
-    BI_WEEKLY("Bi-weekly"),
-    MONTHLY("Monthly"),
-    QUARTERLY("Quarterly"),
-    YEARLY("Yearly")
-}
-
 // Color scheme
 object ChartColors {
     val background = Color(0xFF0F172A)
     val surface = Color(0xFF1E293B)
     val surfaceVariant = Color(0xFF334155)
-    val border = Color(0xFF475569)
-    val textPrimary = Color.White
-    val textSecondary = Color(0xFF94A3B8)
-    val positive = Color(0xFF3B82F6)
+//    val border = MaterialTheme.colorScheme.onBackground
+//    val textPrimary = MaterialTheme.colorScheme.onPrimary
+//    val textSecondary = MaterialTheme.colorScheme.onSecondary
+//    val positive = MaterialTheme.colorScheme.primaryContainer
     val negative = Color(0xFFEF4444)
     val paycheque = Color(0xFF10B981)
     val roundup = Color(0xFF3B82F6)
@@ -69,12 +69,8 @@ object ChartColors {
 @Preview
 @Composable
 fun ContributionsScreen() {
-    var selectedGranularity by remember { mutableStateOf(Granularity.WEEKLY) }
     var showSources by remember { mutableStateOf(false) }
-    var showTrendLine by remember { mutableStateOf(true) }
     var showPaceLine by remember { mutableStateOf(true) }
-    var selectedBar by remember { mutableStateOf<ContributionData?>(null) }
-    var showDetails by remember { mutableStateOf(false) }
 
     // Sample data
     val chartData = remember {
@@ -98,7 +94,6 @@ fun ContributionsScreen() {
     val totalSaved = chartData.sumOf { it.total.toDouble() }.toInt()
     val avgWeek = if (chartData.isNotEmpty()) totalSaved / chartData.size else 0
     val bestWeek = chartData.maxOfOrNull { it.total }?.toInt() ?: 0
-    val streak = chartData.count { it.total > 0 }
 
     Box(
         modifier = Modifier
@@ -107,9 +102,9 @@ fun ContributionsScreen() {
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-//                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+
         ) {
             // Header
             HeaderSection()
@@ -117,21 +112,23 @@ fun ContributionsScreen() {
             Spacer(modifier = Modifier.height(8.dp))
 
             // Granularity selector
-            GranularitySelector(
-                selectedGranularity = selectedGranularity,
-                onGranularityChange = { selectedGranularity = it }
-            )
+//            GranularitySelector(
+//                selectedGranularity = selectedGranularity,
+//                onGranularityChange = { selectedGranularity = it }
+//            )
+            AnimatedToggleButton()
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Main chart card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+//                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+//                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = Color.Transparent
                 ),
-                elevation = CardDefaults.cardElevation(6.dp)
+//                elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Column {
 
@@ -142,43 +139,22 @@ fun ContributionsScreen() {
                         BarChartCanvas(
                             data = chartData,
                             showSources = showSources,
-                            showTrendLine = showTrendLine,
                             showPaceLine = showPaceLine,
-                            onBarClick = { data ->
-                                selectedBar = data
-                                showDetails = true
-                            }
                         )
                     }
 
                     HorizontalDivider(
-                        Modifier,
+                        Modifier.padding(top = 10.dp),
                         DividerDefaults.Thickness,
                         color = MaterialTheme.colorScheme.onPrimary.copy(0.1f)
                     )
 
                     // Stats bar
                     StatsBar(
-                        totalSaved = totalSaved,
                         avgWeek = avgWeek,
                         bestWeek = bestWeek,
-                        streak = streak
                     )
-                }
-            }
 
-            // Details sheet
-            AnimatedVisibility(
-                visible = showDetails && selectedBar != null,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
-            ) {
-                selectedBar?.let { data ->
-                    Spacer(modifier = Modifier.height(16.dp))
-                    DetailsSheet(
-                        data = data,
-                        onDismiss = { showDetails = false }
-                    )
                 }
             }
         }
@@ -195,57 +171,13 @@ fun HeaderSection() {
         ) {
             Text(
                 text = "Contributions Over Time",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
     }
 }
-
-@Composable
-fun GranularitySelector(
-    selectedGranularity: Granularity,
-    onGranularityChange: (Granularity) -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
-        border = androidx.compose.foundation.BorderStroke(1.dp, ChartColors.border)
-    ) {
-        Row(
-            modifier = Modifier.padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Granularity.values().forEach { granularity ->
-                Surface(
-                    modifier = Modifier
-                        .clickable { onGranularityChange(granularity) }
-                        .padding(horizontal = 0.dp, vertical = 8.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (selectedGranularity == granularity) {
-                        androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant
-                    } else {
-                        Color.Transparent
-                    }
-                ) {
-                    Text(
-                        text = granularity.label,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = if (selectedGranularity == granularity) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSecondary
-                        },
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @Preview
 @Composable
@@ -267,7 +199,7 @@ fun EmptyState() {
                     imageVector = Icons.Default.TrendingUp,
                     contentDescription = null,
                     modifier = Modifier.size(40.dp),
-                    tint = ChartColors.textSecondary
+                    tint = MaterialTheme.colorScheme.onSecondary
                 )
             }
         }
@@ -276,178 +208,21 @@ fun EmptyState() {
             text = "No contributions yet",
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
-            color = ChartColors.textSecondary
+            color = MaterialTheme.colorScheme.onSecondary
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Start saving to see your progress",
             fontSize = 14.sp,
-            color = ChartColors.textSecondary.copy(alpha = 0.7f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "💡 Try $25/week to finish by Dec 10",
-            fontSize = 14.sp,
-            color = Color(0xFF3B82F6)
+            color = MaterialTheme.colorScheme.onSecondary.copy(0.7f)
         )
     }
 }
-
-//@Composable
-//fun BarChartCanvas(
-//    data: List<ContributionData>,
-//    showSources: Boolean,
-//    showTrendLine: Boolean,
-//    showPaceLine: Boolean,
-//    onBarClick: (ContributionData) -> Unit,
-//) {
-//    val maxValue = data.maxOf { max(it.total, it.pace) }
-//    val minValue = data.minOf { min(it.total, 0f) }
-//
-//    Column(modifier = Modifier.padding(16.dp)) {
-//        Canvas(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .height(400.dp)
-//        ) {
-//            val chartWidth = size.width - 100f
-//            val chartHeight = size.height - 90f
-//            val barWidth = chartWidth / (data.size * 1.5f)
-//            val spacing = barWidth * 0.5f
-//
-//            val yRange = maxValue - minValue
-//            val yScale = chartHeight / yRange
-//            val zeroY = chartHeight - (0 - minValue) * yScale + 40f
-//
-//            // Draw grid lines
-//            for (i in 0..4) {
-//                val y = 40f + (chartHeight / 4) * i
-//                drawLine(
-//                    color = ChartColors.border,
-//                    start = Offset(80f, y),
-//                    end = Offset(80f + chartWidth, y),
-//                    strokeWidth = 1f,
-//                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
-//                )
-//            }
-//
-//            // Draw zero baseline
-//            drawLine(
-//                color = ChartColors.border,
-//                start = Offset(80f, zeroY),
-//                end = Offset(80f + chartWidth, zeroY),
-//                strokeWidth = 3f
-//            )
-//
-//            // Draw ideal pace line
-//            if (showPaceLine) {
-//                val paceY = chartHeight - (data[0].pace - minValue) * yScale + 40f
-//                drawLine(
-//                    color = ChartColors.pace,
-//                    start = Offset(80f, paceY),
-//                    end = Offset(80f + chartWidth, paceY),
-//                    strokeWidth = 3f,
-//                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 8f))
-//                )
-//            }
-//
-//            // Draw bars
-//            data.forEachIndexed { index, item ->
-//                val x = 80f + index * (barWidth + spacing)
-//
-//                if (showSources) {
-//                    // Stacked bars
-//                    var currentY = zeroY
-//
-//                    // Draw each source
-//                    listOf(
-//                        item.paycheque to ChartColors.paycheque,
-//                        item.roundup to ChartColors.roundup,
-//                        item.manual to ChartColors.manual
-//                    ).forEach { (value, color) ->
-//                        if (value > 0) {
-//                            val barHeight = value * yScale
-//                            drawRoundRect(
-//                                color = color,
-//                                topLeft = Offset(x, currentY - barHeight),
-//                                size = Size(barWidth, barHeight),
-//                                cornerRadius = CornerRadius(4f, 4f)
-//                            )
-//                            currentY -= barHeight
-//                        }
-//                    }
-//
-//                    // Draw withdrawal
-//                    if (item.withdrawal < 0) {
-//                        val barHeight = -item.withdrawal * yScale
-//                        drawRoundRect(
-//                            color = ChartColors.negative,
-//                            topLeft = Offset(x, zeroY),
-//                            size = Size(barWidth, barHeight),
-//                            cornerRadius = CornerRadius(4f, 4f)
-//                        )
-//                    }
-//                } else {
-//                    // Single bar
-//                    val barHeight = kotlin.math.abs(item.total) * yScale
-//                    val barY = if (item.total >= 0) {
-//                        zeroY - barHeight
-//                    } else {
-//                        zeroY
-//                    }
-//
-//                    drawRoundRect(
-//                        color = if (item.total >= 0) ChartColors.positive else ChartColors.negative,
-//                        topLeft = Offset(x, barY),
-//                        size = Size(barWidth, barHeight),
-//                        cornerRadius = CornerRadius(8f, 8f)
-//                    )
-//                }
-//            }
-//
-//
-//            // Draw Y-axis labels
-//            for (i in 0..4) {
-//                val value = ((yRange / 4) * i + minValue).toInt()
-//                val y = chartHeight - (value - minValue) * yScale + 40f
-//                drawContext.canvas.nativeCanvas.drawText(
-//                    "$${value}",
-//                    40f,
-//                    y + 5f,
-//                    android.graphics.Paint().apply {
-//                        color = "#94A3B8".toColorInt()
-//                        textSize = 28f
-//                        textAlign = android.graphics.Paint.Align.RIGHT
-//                    }
-//                )
-//            }
-//
-//            // Draw X-axis labels
-//            data.forEachIndexed { index, item ->
-//                val x = 80f + index * (barWidth + spacing) + barWidth / 2
-//                drawContext.canvas.nativeCanvas.drawText(
-//                    item.week,
-//                    x,
-//                    size.height - 10f,
-//                    android.graphics.Paint().apply {
-//                        color = "#94A3B8".toColorInt()
-//                        textSize = 28f
-//                        textAlign = android.graphics.Paint.Align.CENTER
-//                    }
-//                )
-//            }
-//        }
-//    }
-//}
-
-
 @Composable
 fun BarChartCanvas(
     data: List<ContributionData>,
     showSources: Boolean,
-    showTrendLine: Boolean,
     showPaceLine: Boolean,
-    onBarClick: (ContributionData) -> Unit,
 ) {
     // ── CHANGES: scale by contributions only (ignore pace), add headroom ─────────────
     val maxPositive = data.maxOfOrNull {
@@ -470,7 +245,10 @@ fun BarChartCanvas(
     }
     // ────────────────────────────────────────────────────────────────────────────────
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier) {
+
+        val border = MaterialTheme.colorScheme.onPrimaryFixed
+        val positive = MaterialTheme.colorScheme.onPrimaryFixed
 
         Canvas(
             modifier = Modifier
@@ -495,7 +273,7 @@ fun BarChartCanvas(
                 val v = yTop - (i * (yTop - yBottom) / 4f)
                 val y = mapY(v, chartHeight, topPad)
                 drawLine(
-                    color = ChartColors.border,
+                    color = border,
                     start = Offset(leftPad, y),
                     end = Offset(leftPad + chartWidth, y),
                     strokeWidth = 1f,
@@ -505,7 +283,7 @@ fun BarChartCanvas(
 
             // Zero baseline
             drawLine(
-                color = ChartColors.border,
+                color = border,
                 start = Offset(leftPad, zeroY),
                 end = Offset(leftPad + chartWidth, zeroY),
                 strokeWidth = 3f
@@ -568,7 +346,7 @@ fun BarChartCanvas(
                     val barBottom = max(top, bottom)
 
                     drawRoundRect(
-                        color = if (item.total >= 0f) ChartColors.positive else ChartColors.negative,
+                        color = if (item.total >= 0f) positive else ChartColors.negative,
                         topLeft = Offset(x, barTop),
                         size = Size(barWidth, barBottom - barTop),
                         cornerRadius = CornerRadius(8f, 8f)
@@ -612,10 +390,8 @@ fun BarChartCanvas(
 
 @Composable
 fun StatsBar(
-    totalSaved: Int,
     avgWeek: Int,
     bestWeek: Int,
-    streak: Int,
 ) {
     Row(
         modifier = Modifier
@@ -623,158 +399,131 @@ fun StatsBar(
             .padding(8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        StatItem("Average/Week", "$$avgWeek", Color(0xFF3B82F6))
-        StatItem("Best Week", "$$bestWeek", Color(0xFFA855F7))
+        StatItem("Average/Week", "$$avgWeek")
+        StatItem("Best Week", "$$bestWeek")
     }
 }
 
 @Composable
-fun StatItem(label: String, value: String, color: Color) {
+fun StatItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = ChartColors.textSecondary
+            color = MaterialTheme.colorScheme.onSecondary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = MaterialTheme.colorScheme.onPrimary
         )
     }
 }
-
-@Composable
-fun DetailsSheet(
-    data: ContributionData,
-    onDismiss: () -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = ChartColors.background)
-    ) {
-        Column {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    Text(
-                        text = "${data.week} Details",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ChartColors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Net contribution: $${data.total.toInt()}",
-                        fontSize = 14.sp,
-                        color = ChartColors.textSecondary
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = ChartColors.textSecondary
-                    )
-                }
-            }
-
-            Divider(color = ChartColors.border)
-
-            // Details grid
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SourceCard("Paycheque", data.paycheque.toInt(), ChartColors.paycheque, Modifier.weight(1f))
-                    SourceCard("Round-up", data.roundup.toInt(), ChartColors.roundup, Modifier.weight(1f))
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SourceCard("Manual", data.manual.toInt(), ChartColors.manual, Modifier.weight(1f))
-                    if (data.withdrawal < 0) {
-                        SourceCard("Withdrawal", data.withdrawal.toInt(), ChartColors.negative, Modifier.weight(1f))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2563EB)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Edit")
-                    }
-                    OutlinedButton(
-                        onClick = { },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Note")
-                    }
-                }
-            }
-        }
-    }
+enum class Time{
+    WEEKLY,
+    BIEEKLY,
+    MONTHLY,
+    YEARLY
 }
 
+
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun SourceCard(label: String, amount: Int, color: Color, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = ChartColors.surface)
+fun AnimatedToggleButton(
+    modifier: Modifier = Modifier,
+    selectedOption: Time = Time.WEEKLY,
+    onOptionSelected: (Time) -> Unit = {},
+    selectedBackgroundColor: Color = MaterialTheme.colorScheme.onTertiaryFixed,
+    selectedTextColor: Color = MaterialTheme.colorScheme.onPrimary,
+    unselectedTextColor: Color = MaterialTheme.colorScheme.onSecondary,
+    borderColor: Color = MaterialTheme.colorScheme.onTertiary
+) {
+    val options = listOf(
+         Time.WEEKLY to "Weekly",
+        Time.BIEEKLY to "Bi-weekly",
+        Time.MONTHLY to "Monthly",
+        Time.YEARLY to "Yearly"
+    )
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .background(
+                color = Color.Transparent,
+                shape = RoundedCornerShape(20.dp)
+            ).border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(4.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+        val totalWidth = maxWidth
+        val optionWidth = (totalWidth - 8.dp) / 4 // Account for spacing between options
+
+        // Calculate the offset for the sliding background
+        val selectedIndex = when (selectedOption) {
+            Time.WEEKLY -> 0
+            Time.BIEEKLY -> 1
+            Time.MONTHLY -> 2
+            Time.YEARLY -> 3
+        }
+
+        val slideOffset by animateDpAsState(
+            targetValue = (optionWidth + 4.dp) * selectedIndex,
+            animationSpec = tween(
+                durationMillis = 200,
+                easing = FastOutSlowInEasing
+            ),
+            label = "slide_animation"
+        )
+
+        // Sliding background
+        Box(
+            modifier = Modifier
+                .offset(x = slideOffset)
+                .width(optionWidth)
+                .height(48.dp)
+                .background(
+                    color = selectedBackgroundColor,
+                    shape = RoundedCornerShape(20.dp)
+                )
+        )
+
+        // Row of options
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            options.forEach { (option, label) ->
+                val isSelected = selectedOption == option
+
                 Box(
                     modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                )
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    color = ChartColors.textSecondary
-                )
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null // No hover/ripple effect
+                        ) {
+                            onOptionSelected(option)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        fontSize = 14.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) selectedTextColor else unselectedTextColor
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "$$amount",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = ChartColors.textPrimary
-            )
         }
     }
 }

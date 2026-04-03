@@ -1,28 +1,51 @@
 package com.aryanspatel.grofunds.presentation.screen.showTransaction
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.domain.model.EntryKind
 import com.aryanspatel.grofunds.domain.usecase.BuiltInExpenseCategories
+import com.aryanspatel.grofunds.domain.usecase.getEmoji
+import com.aryanspatel.grofunds.domain.usecase.getIcon
 import com.aryanspatel.grofunds.presentation.common.model.AddEntryUiState
-import com.aryanspatel.grofunds.presentation.common.model.Kind
-import com.aryanspatel.grofunds.presentation.common.model.Transaction
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
+import com.aryanspatel.grofunds.presentation.screen.addEntry.AddExpenseScreen
 import com.aryanspatel.grofunds.presentation.viewmodel.ShowTransactionViewModel
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -70,24 +93,23 @@ fun ExpenseScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             TopAppBarSection(
+                kind = uiState.kind.name,
                 headerText = "Expenses",
                 selectedMonth = currentYM,
                 onMonthChange = { viewModel.onMonthChange(it)},
-                isSummaryMode = isShowSummary,
                 onExportDataClick = {},
                 onShowSummaryClick = { isShowSummary = !isShowSummary; viewModel.clearCategories() },
-                onRecurringTransactionClick = {},
-                onInsightsClick = {}
             )
 
             InsightHeaderSection(
+                kind = uiState.kind.name,
                 totalSpentOrSaved = totalSpent,
                 dailyAvg = dailyAvg,
                 budget = budget,
-                backgroundColor = MaterialTheme.colorScheme.surfaceContainerLowest
             )
 
             FiltersSection(
+                kind = uiState.kind.name,
                 categories = BuiltInExpenseCategories ,
                 selectedCategories = categoryList.toList(),
                 onCategoryChanged = {viewModel.toggleCategory(id = it)},
@@ -98,7 +120,7 @@ fun ExpenseScreen(
                 state = rememberLazyListState(),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = 16.dp)
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -109,7 +131,14 @@ fun ExpenseScreen(
                 }
                 else if (groupedExpenses.isEmpty()) {
                     item {
-                        EmptyState(onAddTransactionClick = {})
+                        EmptyState(
+                            modifier = Modifier,
+                            title = "expense",
+                            description = "Start tracking your spending by adding your first expense.",
+                            icon = Icons.Default.AttachMoney,
+                            iconTint = MaterialTheme.colorScheme.surfaceDim,
+                            onAddTransactionClick = {},
+                        )
                     }
                 } else {
                     groupedExpenses.forEach { (date, dateExpenses) ->
@@ -117,10 +146,15 @@ fun ExpenseScreen(
                             DateHeader(date = date, total = dateExpenses.sumOf { it.amount.toDouble() })
                         }
 
-                        items(dateExpenses, key = { it.id }) { expense ->
+//                        items(dateExpenses, key = { it.transactionId}) { expense ->
+                        itemsIndexed(dateExpenses) { index , expense ->
                             TransactionCard(
                                 modifier = Modifier.animateItem(),
+                                kind = expense.kind.name,
                                 amount = expense.amount.toDoubleOrNull() ?: 0.0,
+//                                categoryIcon = getIcon(expense.categoryOrType, expense.kind.name)
+//                                    ?: R.drawable.other,
+                                categoryIcon = getEmoji(expense.categoryOrType, expense.kind.name) ?: "🧩",
                                 categoryOrType = expense.categoryOrType,
                                 subcategory = expense.subcategory,
                                 merchant = expense.merchant,
@@ -136,18 +170,26 @@ fun ExpenseScreen(
                                 onExcludeFromReport = {},
                                 onDeleteTransaction = {
                                     viewModel.onDeleteTransaction(
-                                        transactionId = expense.id,
+                                        transactionId = expense.transactionId,
                                         kind = expense.kind.name,
                                         amount = expense.amount.toDoubleOrNull() ?: 0.0) }
                             )
+
+                            if(dateExpenses.size  > 1 && index != dateExpenses.size-1){
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 50.dp),
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.surface
+                                )
+                            }
+
                         }
                     }
                 }
-
                 item {
                     Spacer(
                         modifier = Modifier
-                            .height(10.dp)
+                            .padding(bottom = 10.dp)
                             .windowInsetsPadding(WindowInsets.navigationBars)
                     )
                 }
@@ -157,12 +199,12 @@ fun ExpenseScreen(
 
     if(isShowSummary){
         HorizontalSlidingOverlay(
-            isFullScreen = true,
             title = "Expenses Summary",
             onDismiss = { isShowSummary = false },
         ) {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 ExpenseDonutChart(
+                    kind = uiState.kind.name,
                     categoryTotalList = categoryTotalList,
                     grandTotal = totalSpent,
                     modifier = Modifier
@@ -172,7 +214,9 @@ fun ExpenseScreen(
                     minPctForLabel = 3f,
                 )
 
-                CategorySummaryList(categories = categoryTotalList)
+                CategorySummaryList(
+                    kind = uiState.kind.name,
+                    categories = categoryTotalList)
             }
         }
     }
@@ -181,7 +225,7 @@ fun ExpenseScreen(
         EditDuplicateTransaction(
             transaction = AddEntryUiState(
                 kind = EntryKind.EXPENSE,
-                amount = currentEditableTransaction.amount.toString(),
+                amount = currentEditableTransaction.amount,
                 categoryOrType = currentEditableTransaction.categoryOrType,
                 currency = currentEditableTransaction.currency,
                 date = currentEditableTransaction.date,

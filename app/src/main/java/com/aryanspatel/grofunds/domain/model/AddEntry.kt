@@ -50,6 +50,7 @@ sealed class ParsedEntry {
     ) : ParsedEntry()
 
     data class Goal(
+        val kind: String?,
         val input: String?,
         val title: String?,
         val type: String?,
@@ -76,5 +77,6 @@ data class CategorySeed(
     val name: String,            // display (en-CA default)
     val parentId: String? = null,
     val iconRes: Int? = null,
+    val emoji: String? = null,
     val color: Color? = null
 )

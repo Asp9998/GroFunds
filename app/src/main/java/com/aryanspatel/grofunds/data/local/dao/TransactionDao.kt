@@ -110,7 +110,6 @@ interface TransactionDao {
     @Query("""
          SELECT *  FROM transactions 
          WHERE user_id = :userId AND is_deleted = 1 
-            AND remote_updated_at > local_updated_at
         """)
     suspend fun getSoftDeletedTransactions(userId: String) : List<TransactionEntity>
 

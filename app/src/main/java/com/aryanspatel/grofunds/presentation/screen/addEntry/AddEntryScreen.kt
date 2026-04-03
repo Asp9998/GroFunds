@@ -9,15 +9,36 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.EaseOutBounce
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -26,6 +47,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,11 +61,13 @@ import com.aryanspatel.grofunds.domain.usecase.BuiltInExpenseCategories
 import com.aryanspatel.grofunds.domain.usecase.BuiltInIncomeTypes
 import com.aryanspatel.grofunds.domain.usecase.BuiltInSavingTypes
 import com.aryanspatel.grofunds.domain.usecase.subcategoriesFor
-import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.DatePickerField
 import com.aryanspatel.grofunds.presentation.viewmodel.AddEntryViewModel
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
+import com.aryanspatel.grofunds.presentation.components.ModernButton
+import com.aryanspatel.grofunds.presentation.components.ModernIconBadge
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
+import com.aryanspatel.grofunds.presentation.components.ProgressIndicator
 import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
 import com.aryanspatel.grofunds.utils.cleanAmountInput
 import kotlinx.coroutines.launch
@@ -81,7 +105,6 @@ fun AddExpenseScreen(
     val focus = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    var prevKind by remember { mutableStateOf(uiState.kind) } // keep old EntryKind value
 
     /**
      * Listen for one-shot events (To show case Errors)
@@ -100,27 +123,12 @@ fun AddExpenseScreen(
         viewModel.resetScreen(selectedOption)
     }
 
-    /**
-     *  OnEntryKind change ->
-     *  1. remove unsaved craft from the firebase firestore
-     *  2. Reset all UI State with updated EntryKind
-     */
-    fun onEntryKindChange(newKind: EntryKind){
-        if(prevKind != selectedOption){
-            uiState.draftId?.let { viewModel.deleteDraftIfUnsaved(prevKind, it) }
-            reset()
-            prevKind = selectedOption
-        }
-        viewModel.onSelectedOptionChanged(v = newKind)
-    }
-
     BackHandler(true) {
         scope.launch {
             reset()
             onDismiss()
         }
     }
-
 
     /**
      *     Main UI  -  Horizontal sliding screen with EntryKindToggleButton, NoteInputSection, EditableDetailsSection and ActionButtonSection.
@@ -148,11 +156,10 @@ fun AddExpenseScreen(
                 // EntryKindToggleButton
                 AnimatedToggleButton(
                     selectedOption = selectedOption,
-                    onOptionSelected = { onEntryKindChange(newKind = it) })
+                    onOptionSelected = { viewModel.onSelectedOptionChanged(v = it) })
 
                 // NoteInputSection
                 NoteInputSection(
-
                     selectedOption = selectedOption,
                     inputNote = uiState.inputNote,
                     isLoading = isLoading,
@@ -173,10 +180,7 @@ fun AddExpenseScreen(
                             .padding(horizontal = 24.dp)
                             .fillMaxWidth()
                     ) {
-                        CircularProgressIndicator(
-                            strokeWidth = 3.dp,
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        ProgressIndicator()
                     }
                 } else {
 
@@ -215,7 +219,7 @@ fun AddExpenseScreen(
 
 
                     // ActionButtonSection
-                    BottomActonButton(
+                    BottomActionButton(
                         isParsed = uiState.isParsed,
                         onResetClick = { reset() },
                         enabled = canSave,
@@ -233,8 +237,6 @@ fun AddExpenseScreen(
     }
 }
 
-
-
 @Composable
 fun SummaryCard(
     amount: String,
@@ -244,10 +246,11 @@ fun SummaryCard(
     date: String
 ) {
     ModernCard(
+        borderColor = MaterialTheme.colorScheme.onBackground,
         gradient = Brush.linearGradient(
             listOf(
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                MaterialTheme.colorScheme.secondaryContainer,
+                MaterialTheme.colorScheme.primaryContainer
             )
         ),
         content = {
@@ -255,18 +258,11 @@ fun SummaryCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Surface(shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Receipt,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .size(24.dp)
-                    )
-                }
+                ModernIconBadge(
+                    icon = Icons.Default.Receipt,
+                    background = MaterialTheme.colorScheme.surfaceContainer,
+                    iconTint = MaterialTheme.colorScheme.surfaceTint
+                )
                 Column(Modifier.weight(1f)) {
                     Text("$amount $currency",
                         style = MaterialTheme.typography.headlineSmall,
@@ -286,13 +282,11 @@ fun SummaryCard(
 }
 
 
-
 /**
  * Save and Reset Buttons
  */
-
 @Composable
-fun BottomActonButton(
+fun BottomActionButton(
     isParsed: Boolean,
     enabled: Boolean,
     onResetClick: () -> Unit,
@@ -319,12 +313,12 @@ fun BottomActonButton(
 fun ActionButtonsRow(onReset: () -> Unit, onSave: () -> Unit, saveEnabled: Boolean) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
 
-        Button(onClick = onReset,
+        ModernButton(onClick = onReset,
             modifier = Modifier.weight(1f),
             text = stringResource(R.string.entry_screen_cancel_button_text),
             isOutlined = true)
 
-        Button(onClick = onSave,
+        ModernButton(onClick = onSave,
             enabled = saveEnabled,
             modifier = Modifier.weight(2f),
             text = stringResource(R.string.entry_screen_save_button_text))
@@ -354,6 +348,9 @@ fun EditableDetailsSection(
     onGoalStartAmountValueChanged: (String) -> Unit,
 ) {
 
+    val focus = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     AnimatedVisibility(
         visible = state.isParsed,
         enter = slideInVertically(animationSpec = tween(200)) + fadeIn(
@@ -379,6 +376,13 @@ fun EditableDetailsSection(
                     label = stringResource(R.string.amount_label),
                     keyboardType = KeyboardType.Number,
                     suffix = state.currency,
+                    imeAction = ImeAction.Done,
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focus.clearFocus()
+                            keyboardController?.hide()
+                        }
+                    )
                 )
 
                 ModernDropdownTextField(
@@ -421,6 +425,12 @@ fun EditableDetailsSection(
                             value = state.expenseMerchant,
                             onValueChange = { onExpenseMerchantValueChanged(it) },
                             label = stringResource(R.string.merchant_label),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focus.clearFocus()
+                                    keyboardController?.hide()
+                                }
+                            )
                         )
                     }
 
@@ -433,6 +443,12 @@ fun EditableDetailsSection(
                             value = state.goalTitle,
                             onValueChange = { onGoalTitleValueChange(it) },
                             label = stringResource(R.string.goal_title_label),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focus.clearFocus()
+                                    keyboardController?.hide()
+                                }
+                            )
                         )
                         DatePickerField(
                             value = state.goalDueDate,
@@ -461,6 +477,12 @@ fun EditableDetailsSection(
                     onValueChange = { onNoteValueChange(it) },
                     label = stringResource(R.string.note_label),
                     maxLines = 3,
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focus.clearFocus()
+                            keyboardController?.hide()
+                        }
+                    )
                 )
             }
         }
@@ -475,11 +497,14 @@ fun SectionHeader(title: String, subtitle: String, icon: ImageVector) {
             tint = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.size(20.dp))
         Column {
-            Text(title,
+            Text(text = title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold)
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
             Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSecondary
+            )
         }
     }
 }
@@ -495,10 +520,11 @@ fun NoteInputSection(selectedOption: EntryKind,
                      onParseButtonClick: () -> Unit
 ) {
     ModernCard(
+        borderColor = MaterialTheme.colorScheme.onBackground,
         gradient = Brush.linearGradient(
             listOf(
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                MaterialTheme.colorScheme.primaryContainer,
+                MaterialTheme.colorScheme.secondaryContainer)
         )
     ){
         Column(
@@ -508,7 +534,7 @@ fun NoteInputSection(selectedOption: EntryKind,
             Icon(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.primaryFixed,
                 modifier = Modifier.size(32.dp)
             )
             Text(
@@ -519,7 +545,8 @@ fun NoteInputSection(selectedOption: EntryKind,
                                              },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.primaryFixed
             )
             Text(
                 text = stringResource(R.string.common_headline),
@@ -549,7 +576,7 @@ fun NoteInputSection(selectedOption: EntryKind,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
-                    Button(
+                    ModernButton(
                         text = stringResource(R.string.parse_button_text),
                         enabled = inputNote.isNotBlank() && !isLoading,
                         onClick = onParseButtonClick,

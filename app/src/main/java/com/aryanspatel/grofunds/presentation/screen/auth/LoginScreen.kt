@@ -34,8 +34,8 @@ import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.R
 import com.aryanspatel.grofunds.presentation.common.model.AuthState
 import com.aryanspatel.grofunds.presentation.common.model.UserCredentials
-import com.aryanspatel.grofunds.presentation.components.Button
 import com.aryanspatel.grofunds.presentation.components.HorizontalSlidingOverlay
+import com.aryanspatel.grofunds.presentation.components.ModernButton
 import com.aryanspatel.grofunds.presentation.components.ModernTextField
 import com.aryanspatel.grofunds.presentation.components.ProgressIndicator
 import com.aryanspatel.grofunds.presentation.components.SnackBarMessage
@@ -80,9 +80,6 @@ fun LoginScreen(
         }
     }
 
-
-
-
     /**
      *     Main UI with - email , password and action button and forgot password option.
      */
@@ -98,7 +95,8 @@ fun LoginScreen(
 
                 Text(
                     text = stringResource(R.string.login_screen_logo_text),
-                    style = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.primary),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primaryFixed,
                     fontWeight = FontWeight.ExtraBold,
                 )
 
@@ -109,6 +107,7 @@ fun LoginScreen(
                     onValueChange = {onEmailChange(it)},
                     label =  stringResource(R.string.auth_email_label),
                     keyboardType = KeyboardType.Email,
+                    isFirstLetterCapital = false
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -117,12 +116,13 @@ fun LoginScreen(
                     onValueChange = {onPasswordChange(it)},
                     label = stringResource(R.string.auth_password_label),
                     keyboardType = KeyboardType.Password,
-                    isPassword = true
+                    isPassword = true,
+                    isFirstLetterCapital = false
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
+                ModernButton(
                     text = stringResource(R.string.onboarding_login_button_text),
                     onClick = {
                         keyboardController?.hide()

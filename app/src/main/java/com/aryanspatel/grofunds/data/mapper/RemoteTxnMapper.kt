@@ -2,8 +2,6 @@ package com.aryanspatel.grofunds.data.mapper
 
 import com.aryanspatel.grofunds.data.local.entity.TransactionEntity
 import com.aryanspatel.grofunds.data.model.RemoteTxn
-import com.aryanspatel.grofunds.data.remote.model.TransactionDoc
-import java.util.Date
 
 fun RemoteTxn.toEntity(userId: String, previousLocalUpdatedAt: Long?): TransactionEntity {
     val remoteMillis = updatedAtMillis ?: 0L
@@ -25,19 +23,3 @@ fun RemoteTxn.toEntity(userId: String, previousLocalUpdatedAt: Long?): Transacti
         createdAtUTC = remoteMillis,
     )
 }
-
-// Mapper from your Room entity:
-fun TransactionEntity.toRemoteDoc(): TransactionDoc = TransactionDoc(
-    transactionID = transactionID,
-    kind = kind,
-    input = input,
-    amount = amount,
-    currency = currencyCode,
-    categoryOrTypeID = categoryOrTypeID,
-    subcategoryID = subcategoryID,
-    merchant = merchant,
-    note = note,
-    date = Date(date),               // your millis -> Date
-    status = "saved",
-    updatedAt = null                 // important: let server set it
-)

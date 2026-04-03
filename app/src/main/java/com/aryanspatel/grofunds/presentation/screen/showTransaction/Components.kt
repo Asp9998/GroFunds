@@ -4,30 +4,31 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -53,16 +54,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aryanspatel.grofunds.domain.model.CategorySeed
-import com.aryanspatel.grofunds.presentation.components.DeleteConfirmationDialog
+import com.aryanspatel.grofunds.presentation.common.model.Kind
+import com.aryanspatel.grofunds.presentation.components.ModernButton
+import com.aryanspatel.grofunds.presentation.components.ModernConfirmationDialog
 import com.aryanspatel.grofunds.presentation.components.ModernDropDownMenuItem
+import com.aryanspatel.grofunds.presentation.components.ModernIconBadge
 import com.aryanspatel.grofunds.presentation.components.MonthYearPickerDialog
 import java.text.NumberFormat
 import java.time.YearMonth
@@ -70,54 +77,54 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 internal fun TopAppBarSection(
+    kind: String,
     headerText: String,
     selectedMonth: YearMonth = YearMonth.now(),
     onMonthChange: (YearMonth) -> Unit = {},
-    isSummaryMode: Boolean,
     onExportDataClick: () -> Unit,
     onShowSummaryClick: () -> Unit,
-    onRecurringTransactionClick: () -> Unit,
-    onInsightsClick: () -> Unit
 ) {
-    var showMenu by remember {  mutableStateOf(false) }
     Box(modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 20.dp)
+        .padding(horizontal = 16.dp)
     ){
         /** Header(Screen title) Text */
         Text(
             text = headerText,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.align(Alignment.CenterStart)
         )
 
         /** Month & year selector */
         MonthSelectorBar(
+            kind = kind,
             modifier = Modifier.align(Alignment.Center),
             month = selectedMonth,
             onMonthChange = {onMonthChange(it)},)
 
         /** More Menu Icon button */
         Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-            IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            Row {
+                IconButton(onClick = onExportDataClick) {
+                    Icon(Icons.Default.FileDownload,
+                        contentDescription = "Export Data",
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                IconButton(onClick = onShowSummaryClick) {
+                    Icon(Icons.Default.PieChart,
+                        contentDescription = "Summary",
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
             }
-            MoreMenu(
-                isVisible = showMenu,
-                onDismiss = { showMenu = false },
-                isSummaryMode = isSummaryMode,
-                onShowSummaryClick = onShowSummaryClick,
-                onInsightsClick = onInsightsClick,
-                onRecurringTransactionClick = onRecurringTransactionClick,
-                onExportDataClick = onExportDataClick
-            )
         }
     }
 }
 
 @Composable
 private fun MonthSelectorBar(
+    kind: String,
     month: YearMonth,
     onMonthChange: (YearMonth) -> Unit,
     modifier: Modifier = Modifier
@@ -125,12 +132,18 @@ private fun MonthSelectorBar(
     val formatter = remember { DateTimeFormatter.ofPattern("LLL yyyy") }
     var showPicker by remember { mutableStateOf(false) }
 
+    val backgroundColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.surfaceContainer
+    val borderColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onBackground
+
     Surface(
         modifier = modifier
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(10.dp))
             .clickable { showPicker = true },
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(10.dp),
+        color = backgroundColor
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -139,7 +152,8 @@ private fun MonthSelectorBar(
             Text(
                 text = month.format(formatter),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimary
             )
         }
     }
@@ -157,64 +171,26 @@ private fun MonthSelectorBar(
 }
 
 @Composable
-private fun MoreMenu(
-    isVisible: Boolean,
-    onDismiss: () -> Unit,
-    isSummaryMode: Boolean,
-    onShowSummaryClick: () -> Unit,
-    onInsightsClick: () -> Unit,
-    onRecurringTransactionClick: () -> Unit,
-    onExportDataClick: () -> Unit,
-) {
-
-    DropdownMenu(
-        expanded = isVisible,
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(12.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        /** 1) Export data */
-        ModernDropDownMenuItem(
-            text = "Export data",
-            icon = Icons.Default.FileDownload,
-            onClick = {
-                onDismiss()
-                onExportDataClick() })
-
-        /** 2) Summary toggle */
-        ModernDropDownMenuItem(
-            text = if (isSummaryMode) "Show list view" else "Show summary",
-            icon = if (isSummaryMode) Icons.AutoMirrored.Filled.List else Icons.Default.PieChart,
-            onClick = {
-                onDismiss()
-                onShowSummaryClick() })
-
-         /** 3) Recurring Expenses */
-        ModernDropDownMenuItem(
-            text = "Recurring Expense",
-            icon = Icons.Outlined.Autorenew,
-            onClick = {
-                onDismiss()
-                onRecurringTransactionClick()})
-
-        /** 4) Insights */
-        ModernDropDownMenuItem(
-            text = "Insights",
-            icon = Icons.Default.Insights,
-            onClick = {
-                onDismiss()
-                onInsightsClick() })
-    }
-}
-
-@Composable
 internal fun InsightHeaderSection(
+    kind: String,
     isExpenseOverlay: Boolean = true,
     totalSpentOrSaved: Double,
     dailyAvg: Double? = 0.0,
     budget: Double? = 0.0,
-    backgroundColor: Color
 ) {
+
+    val backgroundColor =
+        if(kind == Kind.EXPENSE.name)
+            Brush.linearGradient(listOf(
+                MaterialTheme.colorScheme.onPrimaryContainer,
+                MaterialTheme.colorScheme.onSecondaryContainer))
+        else Brush.linearGradient(listOf(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.secondaryContainer))
+
+    val borderColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onBackground
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.Transparent
@@ -222,13 +198,14 @@ internal fun InsightHeaderSection(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp), // For Elevation visibility
-            colors = CardDefaults.cardColors(containerColor = backgroundColor),
+                .padding(horizontal = 16.dp, vertical = 10.dp), // For Elevation visibility
             shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation( 4.dp)
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         ) {
             Row(
                 modifier = Modifier
+                    .background(backgroundColor)
+                    .border(1.dp, color = borderColor, shape = RoundedCornerShape(20.dp))
                     .fillMaxWidth()
                     .padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -238,7 +215,8 @@ internal fun InsightHeaderSection(
                     Text(
                         text = NumberFormat.getCurrencyInstance().format(totalSpentOrSaved),
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                     if(isExpenseOverlay){
                         Spacer(modifier = Modifier.height(2.dp))
@@ -257,6 +235,7 @@ internal fun InsightHeaderSection(
                 }
                 if(isExpenseOverlay){
                     BudgetProgressRing(
+                        kind = kind,
                         progress = (totalSpentOrSaved / (budget ?: 0.0)).toFloat(),
                         size = 54.dp
                     )
@@ -268,6 +247,7 @@ internal fun InsightHeaderSection(
 
 @Composable
 private fun BudgetProgressRing(
+    kind: String,
     progress: Float,
     size: Dp
 ) {
@@ -281,7 +261,8 @@ private fun BudgetProgressRing(
         contentAlignment = Alignment.Center
     ) {
         val backgroundColor = MaterialTheme.colorScheme.background
-        val mainColor = MaterialTheme.colorScheme.onSecondary
+        val mainColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.surfaceDim
+                            else MaterialTheme.colorScheme.surfaceTint
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 6.dp.toPx()
@@ -316,11 +297,15 @@ private fun BudgetProgressRing(
 
 @Composable
 internal fun FiltersSection(
+    kind: String,
     categories: List<CategorySeed>,
     selectedCategories: List<String>,
     onCategoryChanged: (String) -> Unit,
     onClearCategory: () -> Unit
 ) {
+
+    val backgroundColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.surfaceContainer
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -331,16 +316,17 @@ internal fun FiltersSection(
         ) {
 
             item {
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             item{
                 FilterChip(
                     shape = CircleShape,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        selectedContainerColor = backgroundColor,
                         containerColor = MaterialTheme.colorScheme.surface,
-                        labelColor = MaterialTheme.colorScheme.onPrimary
+                        labelColor = MaterialTheme.colorScheme.onSecondary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         borderWidth = 0.dp,
@@ -350,7 +336,7 @@ internal fun FiltersSection(
                     ),
                     selected = selectedCategories.isEmpty(),
                     onClick = onClearCategory,
-                    label = { Text("All") }
+                    label = { Text(text = "All") }
                 )
             }
 
@@ -358,9 +344,10 @@ internal fun FiltersSection(
                 FilterChip(
                     shape = CircleShape,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        selectedContainerColor = backgroundColor,
                         containerColor = MaterialTheme.colorScheme.surface,
-                        labelColor = MaterialTheme.colorScheme.onPrimary
+                        labelColor = MaterialTheme.colorScheme.onSecondary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         borderWidth = 0.dp,
@@ -370,12 +357,12 @@ internal fun FiltersSection(
                     ),
                     selected = selectedCategories.contains(category.id),
                     onClick = {  onCategoryChanged(category.id)},
-                    label = { Text(category.name) }
+                    label = { Text(text = category.name) }
                 )
             }
 
             item {
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
         }
     }
@@ -393,7 +380,8 @@ internal fun DateHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, top = 8.dp, bottom = 2.dp, end = 16.dp),
+//                .padding(start = 16.dp, top = 8.dp, bottom = 2.dp, end = 16.dp),
+                .padding(start = 0.dp, top = 8.dp, bottom = 2.dp, end = 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -414,7 +402,9 @@ internal fun DateHeader(
 @Composable
 internal fun TransactionCard(
     modifier: Modifier = Modifier,
+    kind: String,
     amount: Double,
+    categoryIcon: String,
     categoryOrType: String,
     isExpenseOverlay: Boolean,
     subcategory: String? = null,
@@ -429,17 +419,61 @@ internal fun TransactionCard(
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
+    val backgroundColor =
+        if(kind == Kind.EXPENSE.name)
+            Brush.linearGradient(listOf(
+                MaterialTheme.colorScheme.onSecondaryContainer,
+                MaterialTheme.colorScheme.onPrimaryContainer))
+        else Brush.linearGradient(listOf(
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.primaryContainer))
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
+    val borderColor = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onBackground
+
+    val iconBackground = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.surfaceContainer
+    val iconTint = if(kind == Kind.EXPENSE.name) MaterialTheme.colorScheme.surfaceDim
+                            else MaterialTheme.colorScheme.surfaceTint
+
+    Column(
+//        modifier = modifier.fillMaxWidth()
+//            .clip(RoundedCornerShape(16.dp))
+//            .background(backgroundColor)
+//            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+//                .border(1.dp, Color.Red),
+                .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+            /** Category Icon */
+//            Box(
+//                modifier = Modifier
+//                    .size(40.dp)
+//                    .clip(RoundedCornerShape(10.dp))
+//                    .background(iconBackground),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    painter = painterResource(categoryIcon),
+//                    contentDescription = "Category Icon",
+//                    modifier = Modifier.size(20.dp),
+//                    tint = iconTint)
+//            }
+
+            ModernIconBadge(
+                text = categoryIcon,
+//                background = iconBackground,
+                background = Color.Transparent,
+                iconTint = iconTint
+            )
+
+
+            Spacer(modifier = Modifier.width(10.dp))
 
             /** Category / Type, Subcategory, Merchant and Note */
             Column(
@@ -497,7 +531,8 @@ internal fun TransactionCard(
                     text = (if(isExpenseOverlay)"-" else "")
                             + NumberFormat.getCurrencyInstance().format(amount),
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
                 Box {
                     IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(24.dp)) {
@@ -505,7 +540,7 @@ internal fun TransactionCard(
                             Icons.Default.MoreVert,
                             contentDescription = "More options",
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     TransactionMenu(
@@ -522,9 +557,11 @@ internal fun TransactionCard(
         }
     }
     if (confirmDelete) {
-        DeleteConfirmationDialog(
+        ModernConfirmationDialog(
             title = "Delete transaction?",
             text = "This action cannot be undone.",
+            confirmButtonLabel = "Delete",
+            confirmButtonColor = MaterialTheme.colorScheme.error,
             onConfirm = {
                 onDeleteTransaction()
                 confirmDelete = false
@@ -548,7 +585,7 @@ private fun TransactionMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(12.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surface,
     ) {
         ModernDropDownMenuItem(
             text = "Edit",
@@ -581,13 +618,22 @@ private fun TransactionMenu(
 
 
 @Composable
-fun EmptyState(onAddTransactionClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+fun EmptyState(
+    modifier: Modifier = Modifier,
+    title: String,
+    description: String,
+    icon: ImageVector,
+    iconTint: Color,
+    onAddTransactionClick: () -> Unit
+) {
+
+    Column(modifier = modifier
+        .fillMaxSize()
+        .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -598,10 +644,10 @@ fun EmptyState(onAddTransactionClick: () -> Unit) {
                 modifier = Modifier.fillMaxSize()
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.TrendingUp,
+                    icon,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = iconTint
                 )
             }
         }
@@ -609,23 +655,28 @@ fun EmptyState(onAddTransactionClick: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "No expenses yet",
+            text = "No ${title}s yet",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Start tracking your spending by adding your first expense.",
+            text = description,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSecondary,
+            textAlign = TextAlign.Center
+
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(onClick = onAddTransactionClick) {
-            Text("Add your first expense")
-        }
+        ModernButton(
+            modifier = Modifier.wrapContentWidth(),
+            onClick = onAddTransactionClick,
+            text = "Add your first $title"
+        )
     }
 }

@@ -16,9 +16,6 @@
       <SelectionState runConfigName="createDraft_emitsPending_and_pathStable()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="LoginScreenTest">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="login_shows_snackbar_when_message_present()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
